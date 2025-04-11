@@ -8,6 +8,6 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: PYTHON_VERSION
-        value: 3.9.18
+        value: 3.12.2
     healthCheckPath: /
     autoDeploy: true
