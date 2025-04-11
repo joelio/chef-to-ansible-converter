@@ -545,12 +545,18 @@ Please provide the equivalent Ansible variables in YAML format.
                 # Convert ERB syntax to Jinja2
                 converted_content = self._convert_erb_to_jinja(template['content'])
                 
-                # Determine the new path (change .erb to .j2)
+                # Determine the new path (change .erb to .j2 and remove 'default/' prefix)
                 new_path = original_path
-                if original_path.endswith('.erb'):
-                    new_path = original_path[:-4] + '.j2'
-                elif not original_path.endswith('.j2'):
-                    new_path = original_path + '.j2'
+                
+                # Remove 'default/' prefix if present (Chef-specific convention)
+                if new_path.startswith('default/'):
+                    new_path = new_path[8:]
+                
+                # Change file extension from .erb to .j2
+                if new_path.endswith('.erb'):
+                    new_path = new_path[:-4] + '.j2'
+                elif not new_path.endswith('.j2'):
+                    new_path = new_path + '.j2'
                 
                 # Add a header to the template explaining it was converted
                 header = f"#\n# Ansible Template: {template_name}\n# Converted from Chef ERB template\n#\n\n"

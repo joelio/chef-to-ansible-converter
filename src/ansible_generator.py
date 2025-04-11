@@ -54,8 +54,14 @@ class AnsibleGenerator:
                     continue
                     
                 # Ensure template path is properly formatted
-                template_path = role_path / 'templates' / template['path']
+                # Create a Path object from the template path
+                template_rel_path = Path(template['path'])
+                
+                # Create the full path in the role's templates directory
+                template_path = role_path / 'templates' / template_rel_path
                 template_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                print(f"Creating template at: {template_path}")
                 
                 # Write template content
                 try:
