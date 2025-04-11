@@ -596,7 +596,7 @@ Please provide the equivalent Ansible variables in YAML format.
         
         # Step 1: Handle ERB output tags (<%= ... %>) - convert to Jinja2 {{ ... }}
         # But first, escape any existing {{ or }} in the content
-        jinja_content = erb_content.replace('{{', '\{\{').replace('}}', '\}\}')
+        jinja_content = erb_content.replace('{{', r'\{\{').replace('}}', r'\}\}')
         jinja_content = re.sub(r'<%=\s*(.+?)\s*%>', r'{{ \1 }}', jinja_content)
         
         # Step 2: Handle ERB control flow tags (<% if ... %>, <% else %>, <% end %>, etc.)

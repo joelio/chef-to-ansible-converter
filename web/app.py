@@ -13,6 +13,7 @@ import logging
 import traceback
 import queue
 import threading
+import zipfile
 from time import sleep
 from datetime import datetime
 from pathlib import Path
@@ -291,6 +292,28 @@ def convert_repo():
                         # Add cookbook name to ansible_code if not present
                         if 'name' not in ansible_code:
                             ansible_code['name'] = cookbook['name']
+                            
+                        # Process templates separately to ensure they're included
+                        logger.info(f"Processing templates for cookbook: {cookbook['name']}")
+                        progress_callback({
+                            'status': 'processing',
+                            'message': f"Processing templates for {cookbook['name']}...",
+                            'progress': 50 + (i / total_cookbooks) * 20 + 10
+                        })
+                        
+                        # Convert templates directly using LLMConverter
+                        templates = parsed_cookbook.get('templates', [])
+                        logger.info(f"Found {len(templates)} templates in cookbook {cookbook['name']}")
+                        
+                        if templates:
+                            for template in templates:
+                                logger.debug(f"Template found: {template.get('name', 'unknown')} at {template.get('path', 'unknown')}")
+                            
+                            ansible_templates = llm_converter.convert_templates(templates)
+                            logger.info(f"Converted {len(ansible_templates)} templates for cookbook {cookbook['name']}")
+                            
+                            # Add templates to ansible_code
+                            ansible_code['templates'] = ansible_templates
                         
                         # Generate Ansible role
                         logger.info(f"Generating Ansible role: {cookbook['name']}")
@@ -596,8 +619,24 @@ def download_conversion(conversion_id):
     
     # Create a new zip file with all the converted roles
     try:
-        shutil.make_archive(zip_path[:-4], 'zip', conversion_dir)
+        # Use zipfile module for more control over the zip creation process
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Walk through the conversion directory and add all files
+            for root, dirs, files in os.walk(conversion_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # Calculate the relative path for the zip file
+                    rel_path = os.path.relpath(file_path, conversion_dir)
+                    print(f"Adding to zip: {rel_path}")
+                    zipf.write(file_path, rel_path)
+        
         print(f"Created zip file at {zip_path}")
+        
+        # Debug: Print the contents of the zip file
+        with zipfile.ZipFile(zip_path, 'r') as zipf:
+            print(f"Zip file contains {len(zipf.namelist())} files:")
+            for file_name in zipf.namelist():
+                print(f"  - {file_name}")
     except Exception as e:
         app.logger.error(f"Error creating zip file: {str(e)}")
         flash('Error creating zip file.', 'error')
