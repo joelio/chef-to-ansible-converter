@@ -623,9 +623,27 @@ Please provide the equivalent Ansible variables in YAML format.
         # Step 4: Convert Chef node attributes to Ansible variables
         # node['attribute'] -> attribute
         # node['section']['attribute'] -> section_attribute
+        # node[:attribute] -> attribute (Chef symbol syntax)
+        # node.attribute -> attribute (Chef dot syntax)
+        
+        # Handle node['attr'] syntax
         jinja_content = re.sub(r"node\['([^']+)'\]\['([^']+)'\]\['([^']+)'\]", r"\1_\2_\3", jinja_content)
         jinja_content = re.sub(r"node\['([^']+)'\]\['([^']+)'\]", r"\1_\2", jinja_content)
         jinja_content = re.sub(r"node\['([^']+)'\]", r"\1", jinja_content)
+        
+        # Handle node[:attr] syntax
+        jinja_content = re.sub(r"node\[:([^\]]+)\]\[:([^\]]+)\]\[:([^\]]+)\]", r"\1_\2_\3", jinja_content)
+        jinja_content = re.sub(r"node\[:([^\]]+)\]\[:([^\]]+)\]", r"\1_\2", jinja_content)
+        jinja_content = re.sub(r"node\[:([^\]]+)\]", r"\1", jinja_content)
+        
+        # Handle node.attr syntax
+        jinja_content = re.sub(r"node\.([a-zA-Z0-9_]+)", r"\1", jinja_content)
+        
+        # Special case for common node attributes
+        jinja_content = jinja_content.replace("hostname", "ansible_hostname")
+        jinja_content = jinja_content.replace("ipaddress", "ansible_default_ipv4.address")
+        jinja_content = jinja_content.replace("platform", "ansible_distribution")
+        jinja_content = jinja_content.replace("platform_version", "ansible_distribution_version")
         
         # Step 5: Convert Chef-specific functions to Ansible equivalents
         # Chef's File.exist? -> Jinja2's is defined
