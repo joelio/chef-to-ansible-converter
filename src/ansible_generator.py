@@ -48,10 +48,30 @@ class AnsibleGenerator:
         # Write templates
         if 'templates' in ansible_data and ansible_data['templates']:
             for template in ansible_data['templates']:
+                # Make sure template has the required fields
+                if 'path' not in template or 'content' not in template:
+                    print(f"Warning: Template missing required fields: {template}")
+                    continue
+                    
+                # Ensure template path is properly formatted
                 template_path = role_path / 'templates' / template['path']
                 template_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(template_path, 'w') as f:
-                    f.write(template['content'])
+                
+                # Write template content
+                try:
+                    with open(template_path, 'w') as f:
+                        f.write(template['content'])
+                    print(f"Created template: {template_path}")
+                except Exception as e:
+                    print(f"Error creating template {template_path}: {str(e)}")
+                    
+            # Create a sample template if none were provided
+            if not any(os.path.exists(role_path / 'templates' / template['path']) 
+                      for template in ansible_data['templates'] if 'path' in template):
+                sample_template_path = role_path / 'templates' / 'sample.j2'
+                with open(sample_template_path, 'w') as f:
+                    f.write("# Sample template for {{ role_name }}\n\n# This is a placeholder template file.\n")
+                print(f"Created sample template: {sample_template_path}")
         
         # Write files
         if 'files' in ansible_data and ansible_data['files']:

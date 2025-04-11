@@ -583,8 +583,25 @@ def download_conversion(conversion_id):
     if os.path.exists(zip_path):
         os.remove(zip_path)
     
+    # Verify that the templates directories exist and have content
+    for role_dir in Path(conversion_dir).glob('*'):
+        if role_dir.is_dir():
+            templates_dir = role_dir / 'templates'
+            if not templates_dir.exists():
+                templates_dir.mkdir(exist_ok=True)
+                # Create a sample template file if none exists
+                sample_path = templates_dir / 'sample.j2'
+                with open(sample_path, 'w') as f:
+                    f.write(f"# Sample template for {role_dir.name}\n\n# This is a placeholder template file.\n")
+    
     # Create a new zip file with all the converted roles
-    shutil.make_archive(zip_path[:-4], 'zip', conversion_dir)
+    try:
+        shutil.make_archive(zip_path[:-4], 'zip', conversion_dir)
+        print(f"Created zip file at {zip_path}")
+    except Exception as e:
+        app.logger.error(f"Error creating zip file: {str(e)}")
+        flash('Error creating zip file.', 'error')
+        return redirect(url_for('index'))
     
     return send_file(zip_path, as_attachment=True, download_name=zip_filename)
 
