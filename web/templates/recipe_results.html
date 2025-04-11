@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Conversion Results - Chef to Ansible Converter{% endblock %}
+
+{% block content %}
+<h1>Chef Recipe Conversion Results</h1>
+<p class="lead">Your Chef recipe has been converted to Ansible tasks and handlers.</p>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Tasks (tasks/main.yml)</h3>
+    </div>
+    <div class="card-body">
+        <pre><code>{{ tasks_yaml }}</code></pre>
+    </div>
+</div>
+
+{% if handlers_yaml %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Handlers (handlers/main.yml)</h3>
+    </div>
+    <div class="card-body">
+        <pre><code>{{ handlers_yaml }}</code></pre>
+    </div>
+</div>
+{% endif %}
+
+<div class="alert alert-info">
+    <h4 class="alert-heading">Next Steps</h4>
+    <p>You can now copy these tasks and handlers to your Ansible project. Here's how to use them:</p>
+    <ol>
+        <li>Create a new Ansible role with <code>ansible-galaxy init myrole</code></li>
+        <li>Copy the tasks to <code>roles/myrole/tasks/main.yml</code></li>
+        <li>Copy the handlers to <code>roles/myrole/handlers/main.yml</code></li>
+        <li>Create any necessary templates in <code>roles/myrole/templates/</code></li>
+        <li>Define variables in <code>roles/myrole/defaults/main.yml</code></li>
+    </ol>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('convert_recipe') }}" class="btn btn-primary">Convert Another Recipe</a>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+</div>
+{% endblock %}

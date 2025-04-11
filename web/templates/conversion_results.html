@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Conversion Results - Chef to Ansible Converter{% endblock %}
+
+{% block content %}
+<h1>Repository Conversion Results</h1>
+<p class="lead">Your Chef repository has been converted to Ansible roles.</p>
+
+<div class="alert alert-{% if results.success_count > 0 %}success{% else %}warning{% endif %}">
+    <h4 class="alert-heading">Conversion Summary</h4>
+    <p>Successfully converted {{ results.success_count }} cookbook(s).</p>
+    {% if results.failed_count > 0 %}
+    <p>Failed to convert {{ results.failed_count }} cookbook(s).</p>
+    {% endif %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Converted Cookbooks</h3>
+    </div>
+    <div class="card-body">
+        {% if cookbooks %}
+        <div class="list-group">
+            {% for cookbook in cookbooks %}
+            <div class="list-group-item">
+                <h5 class="mb-1">{{ cookbook }}</h5>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('view_file', conversion_id=conversion_id, cookbook=cookbook, file_type='tasks') }}" class="btn btn-sm btn-outline-primary">Tasks</a>
+                    <a href="{{ url_for('view_file', conversion_id=conversion_id, cookbook=cookbook, file_type='handlers') }}" class="btn btn-sm btn-outline-primary">Handlers</a>
+                    <a href="{{ url_for('view_file', conversion_id=conversion_id, cookbook=cookbook, file_type='defaults') }}" class="btn btn-sm btn-outline-primary">Defaults</a>
+                    <a href="{{ url_for('view_file', conversion_id=conversion_id, cookbook=cookbook, file_type='meta') }}" class="btn btn-sm btn-outline-primary">Meta</a>
+                    <a href="{{ url_for('view_file', conversion_id=conversion_id, cookbook=cookbook, file_type='readme') }}" class="btn btn-sm btn-outline-primary">README</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>No cookbooks were successfully converted.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Conversion Details</h3>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="conversionDetails">
+            {% for detail in results.details %}
+            <div class="card">
+                <div class="card-header" id="heading{{ loop.index }}">
+                    <h2 class="mb-0">
+                        <button class="btn btn-link btn-block text-left {% if not detail.success %}text-danger{% endif %}" type="button" data-toggle="collapse" data-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+                            {{ detail.cookbook }} - {% if detail.success %}Success{% else %}Failed{% endif %}
+                        </button>
+                    </h2>
+                </div>
+                <div id="collapse{{ loop.index }}" class="collapse" aria-labelledby="heading{{ loop.index }}" data-parent="#conversionDetails">
+                    <div class="card-body">
+                        {% if detail.messages %}
+                        <h5>Messages:</h5>
+                        <ul>
+                            {% for message in detail.messages %}
+                            <li>{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p>No messages.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('download_conversion', conversion_id=conversion_id) }}" class="btn btn-success">Download Ansible Roles</a>
+    <a href="{{ url_for('convert_repo') }}" class="btn btn-primary">Convert Another Repository</a>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+</div>
+{% endblock %}

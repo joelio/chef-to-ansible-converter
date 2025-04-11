@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Chef to Ansible Converter{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <div class="row">
+        <div class="col-md-9">
+            <h1 class="display-4">Chef to Ansible Converter</h1>
+            <p class="lead">Convert your Chef cookbooks to Ansible roles with the power of Anthropic's Claude AI.</p>
+        </div>
+        <div class="col-md-3 d-none d-md-block text-center">
+            <img src="{{ url_for('static', filename='images/abstract__geometric__8000.svg') }}" alt="Chef to Ansible Conversion" class="img-fluid" style="max-height: 120px;">
+        </div>
+    </div>
+    <hr class="my-4">
+    <div class="alert alert-warning">
+        <h5><i class="bi bi-exclamation-triangle-fill"></i> Security Notice</h5>
+        <p><strong>IMPORTANT:</strong> Do not use this tool with repositories containing sensitive information, credentials, or proprietary code. All code submitted for conversion is processed through external API services and may be stored or logged. Use only with non-sensitive, public, or test repositories.</p>
+    </div>
+    <p>Choose one of the conversion options below to get started:</p>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Convert Git Repository</h5>
+                    <p class="card-text">Convert an entire Chef cookbook repository to Ansible roles.</p>
+                    <a href="{{ url_for('convert_repo') }}" class="btn btn-primary">Convert Repository</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Convert Chef Recipe</h5>
+                    <p class="card-text">Convert a single Chef recipe by pasting the code.</p>
+                    <a href="{{ url_for('convert_recipe') }}" class="btn btn-primary">Convert Recipe</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Convert Chef File</h5>
+                    <p class="card-text">Convert a single Chef recipe file (.rb).</p>
+                    <a href="{{ url_for('convert_file') }}" class="btn btn-primary">Convert File</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <h3>How It Works</h3>
+        <p>This tool uses Anthropic's Claude AI to convert Chef cookbooks to Ansible roles. The conversion process involves:</p>
+        <ol>
+            <li>Parsing Chef cookbooks and recipes</li>
+            <li>Converting Chef code to Ansible using Claude AI</li>
+            <li>Generating properly formatted Ansible roles</li>
+            <li>Validating the generated Ansible code</li>
+        </ol>
+    </div>
+    <div class="col-md-6">
+        <h3>Features</h3>
+        <ul>
+            <li>Convert entire Git repositories containing Chef cookbooks</li>
+            <li>Convert individual Chef recipes</li>
+            <li>Convert Chef recipe files</li>
+            <li>Generate properly formatted Ansible roles</li>
+            <li>Handle Chef notifications, templates, and resources</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

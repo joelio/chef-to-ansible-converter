@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}View {{ file_type }} - {{ cookbook }} - Chef to Ansible Converter{% endblock %}
+
+{% block content %}
+<h1>{{ cookbook }} - {{ file_type }}</h1>
+<p class="lead">Viewing the {{ file_type }} file for the {{ cookbook }} cookbook.</p>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>{{ file_type }}</h3>
+    </div>
+    <div class="card-body">
+        <pre><code>{{ content }}</code></pre>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ url_for('conversion_results', conversion_id=conversion_id) }}" class="btn btn-primary">Back to Results</a>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+</div>
+{% endblock %}

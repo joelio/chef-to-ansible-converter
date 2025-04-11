@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Convert Repository - Chef to Ansible Converter{% endblock %}
+
+{% block content %}
+<h1>Convert Chef Repository to Ansible</h1>
+<p class="lead">Enter the URL of a Git repository containing Chef cookbooks to convert to Ansible roles.</p>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.repo_url.label }}
+                {{ form.repo_url(class="form-control", placeholder="https://github.com/username/repo") }}
+                {% if form.repo_url.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.repo_url.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-text text-muted">Enter the URL of a Git repository containing Chef cookbooks.</small>
+            </div>
+            
+            <div class="form-group">
+                {{ form.api_key.label }}
+                {{ form.api_key(class="form-control", placeholder="sk-ant-api03-...") }}
+                {% if form.api_key.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.api_key.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-text text-muted">Enter your Anthropic API key. If not provided, the server's API key will be used if available.</small>
+            </div>
+            
+            <div class="form-group">
+                {{ form.model.label }}
+                {{ form.model(class="form-control") }}
+                {% if form.model.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.model.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-text text-muted">Select the Anthropic model to use for conversion.</small>
+            </div>
+            
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <h4 class="alert-heading">Important Notes</h4>
+    <ul>
+        <li>The repository must be publicly accessible.</li>
+        <li>The conversion process may take several minutes depending on the size of the repository.</li>
+        <li>The repository should contain Chef cookbooks in the standard format.</li>
+        <li>Large repositories may time out. Consider converting individual recipes instead.</li>
+    </ul>
+</div>
+{% endblock %}

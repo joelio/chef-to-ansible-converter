@@ -1,0 +1,21 @@
+{
+  "name": "chef-to-ansible-converter",
+  "version": "1.0.0",
+  "description": "Convert Chef cookbooks to Ansible roles",
+  "main": "index.js",
+  "scripts": {
+    "build": "mkdir -p dist && cp -r web/static/* dist/ && cp web/templates/index.html dist/"
+  },
+  "keywords": [
+    "chef",
+    "ansible",
+    "converter",
+    "claude"
+  ],
+  "author": "joelio",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "node-fetch": "^3.3.2"
+  }
+}

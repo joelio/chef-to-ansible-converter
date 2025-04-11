@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+
+{% block title %}Conversion Progress - Chef to Ansible Converter{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1><i class="bi bi-arrow-repeat spin me-2"></i>Conversion Progress</h1>
+    <p class="lead">Converting your Chef code to Ansible. Please wait...</p>
+    
+    <style>
+        .spin {
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .log-entry {
+            margin-bottom: 4px;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 4px;
+        }
+        .status-icon {
+            margin-right: 8px;
+        }
+    </style>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="progress mb-3">
+                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+            <div id="status-message" class="alert alert-info">
+                <i id="status-icon" class="bi bi-hourglass-split status-icon"></i>
+                <span id="status-text">Initializing conversion...</span>
+            </div>
+            <div class="text-end mb-2">
+                <button id="test-connection" class="btn btn-sm btn-outline-secondary">Test Connection</button>
+            </div>
+            <div id="log-container" class="border p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                <div id="log-messages">
+                    <div class="log-entry"><span class="text-muted">[<span id="current-time"></span>]</span> Starting conversion process...</div>
+                </div>
+            </div>
+            <script>
+                // Set the current time
+                document.getElementById('current-time').textContent = new Date().toTimeString().split(' ')[0];
+            </script>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const progressBar = document.getElementById('progress-bar');
+        const statusMessage = document.getElementById('status-message');
+        const logMessages = document.getElementById('log-messages');
+        const logContainer = document.getElementById('log-container');
+        
+        // Log that the page has loaded
+        console.log('Progress page loaded for conversion ID: {{ conversion_id }}');
+        
+        // Function to add a log message
+        function addLogMessage(message) {
+            const now = new Date();
+            const timeString = now.toTimeString().split(' ')[0];
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            // Add appropriate icon based on message content
+            let icon = '';
+            if (message.includes('Starting') || message.includes('Initializing')) {
+                icon = '<i class="bi bi-play-fill text-primary"></i> ';
+            } else if (message.includes('Found')) {
+                icon = '<i class="bi bi-search text-info"></i> ';
+            } else if (message.includes('Parsing') || message.includes('Processing')) {
+                icon = '<i class="bi bi-gear text-secondary"></i> ';
+            } else if (message.includes('Converting')) {
+                icon = '<i class="bi bi-arrow-left-right text-primary"></i> ';
+            } else if (message.includes('Generating')) {
+                icon = '<i class="bi bi-file-earmark-code text-success"></i> ';
+            } else if (message.includes('Validating')) {
+                icon = '<i class="bi bi-check2-all text-info"></i> ';
+            } else if (message.includes('API')) {
+                icon = '<i class="bi bi-cloud-arrow-up-down text-primary"></i> ';
+            } else if (!message.includes('<i class=')) { // Don't add icon if message already has one
+                icon = '<i class="bi bi-info-circle text-secondary"></i> ';
+            }
+            
+            // Only add icon if message doesn't already have one
+            if (!message.includes('<i class=')) {
+                message = icon + message;
+            }
+            
+            logEntry.innerHTML = `<span class="text-muted">[${timeString}]</span> ${message}`;
+            logMessages.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Connect to the SSE endpoint
+        console.log('Connecting to SSE endpoint: /progress/{{ conversion_id }}');
+        const eventSource = new EventSource('/progress/{{ conversion_id }}');
+        
+        // Set a timeout to close the connection if nothing happens for 5 minutes
+        const connectionTimeout = setTimeout(function() {
+            console.log('Connection timeout - closing EventSource after 5 minutes of inactivity');
+            eventSource.close();
+            addLogMessage('<i class="bi bi-exclamation-circle text-warning"></i> Connection timed out after 5 minutes of inactivity.');
+            
+            // Add a refresh button
+            const refreshButton = document.createElement('div');
+            refreshButton.className = 'mt-3 text-center';
+            refreshButton.innerHTML = `<button class="btn btn-warning" onclick="window.location.reload()">Refresh Page</button>`;
+            document.querySelector('.card-body').appendChild(refreshButton);
+        }, 5 * 60 * 1000); // 5 minutes
+        
+        // Handle incoming messages
+        eventSource.onmessage = function(event) {
+            try {
+                // Reset the connection timeout on each message
+                clearTimeout(connectionTimeout);
+                
+                console.log('Received SSE message:', event.data);
+                let data;
+                try {
+                    data = JSON.parse(event.data);
+                } catch (e) {
+                    console.error('Error parsing SSE message:', e, event.data);
+                    addLogMessage(`<i class="bi bi-exclamation-triangle-fill text-danger"></i> Error parsing message from server: ${e.message}`);
+                    return;
+                }
+            
+            // Update status message
+            if (data.message) {
+                document.getElementById('status-text').textContent = data.message;
+                addLogMessage(data.message);
+            }
+            
+            // Update progress bar
+            if (data.progress !== undefined) {
+                const progress = Math.round(data.progress);
+                progressBar.style.width = `${progress}%`;
+                progressBar.textContent = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress);
+            }
+            
+            // Handle different statuses
+            if (data.status === 'processing') {
+                statusMessage.className = 'alert alert-info';
+                document.getElementById('status-icon').className = 'bi bi-hourglass-split status-icon';
+            } else if (data.status === 'completed') {
+                console.log('Conversion completed successfully');
+                statusMessage.className = 'alert alert-success';
+                document.getElementById('status-icon').className = 'bi bi-check-circle-fill status-icon';
+                progressBar.className = 'progress-bar bg-success';
+                addLogMessage('<i class="bi bi-check-circle-fill text-success"></i> Conversion completed successfully!');
+                document.querySelector('h1 i').className = 'bi bi-check-circle-fill me-2';
+                document.querySelector('h1 i').style.animation = 'none';
+                
+                // Create action buttons container
+                const actionsContainer = document.createElement('div');
+                actionsContainer.className = 'mt-4 p-3 bg-light rounded border';
+                
+                // Log the URLs for debugging
+                console.log('Download URL:', data.download_url);
+                
+                // Use hardcoded URL as a fallback if the data URL is undefined
+                const downloadUrl = data.download_url || `/download/{{ conversion_id }}`;
+                
+                actionsContainer.innerHTML = `
+                    <h5 class="mb-3"><i class="bi bi-check2-circle text-success"></i> Conversion Complete!</h5>
+                    <p>Your Chef code has been successfully converted to Ansible.</p>
+                    <div class="d-grid">
+                        <a href="${downloadUrl}" class="btn btn-success"><i class="bi bi-download"></i> Download Ansible Roles</a>
+                    </div>
+                `;
+                
+                // Add the actions container to the page
+                document.querySelector('.card-body').appendChild(actionsContainer);
+                
+                // Add log message for download
+                addLogMessage(`<i class="bi bi-download text-success"></i> <a href="${downloadUrl}">Download converted Ansible roles</a>`);
+                
+                
+                // Close the EventSource connection
+                console.log('Closing EventSource connection');
+                eventSource.close();
+                
+                // Clear the connection timeout
+                clearTimeout(connectionTimeout);
+                
+                // Redirect after a short delay if a redirect URL is provided
+                if (data.redirect_url) {
+                    addLogMessage('<i class="bi bi-arrow-right-circle text-primary"></i> Results ready! Click the button below to view.');
+                    console.log('Results available at:', data.redirect_url);
+                    
+                    // We'll no longer auto-redirect as it might cause issues
+                    // Just rely on the manual button that was already created
+                }
+            } else if (data.status === 'error') {
+                statusMessage.className = 'alert alert-danger';
+                document.getElementById('status-icon').className = 'bi bi-exclamation-triangle-fill status-icon';
+                progressBar.className = 'progress-bar bg-danger';
+                addLogMessage('<i class="bi bi-exclamation-triangle-fill text-danger"></i> Error: ' + data.message);
+                document.querySelector('h1 i').className = 'bi bi-exclamation-triangle-fill me-2';
+                document.querySelector('h1 i').style.animation = 'none';
+                eventSource.close();
+            }
+            } catch (error) {
+                console.error('Error handling SSE message:', error);
+                addLogMessage(`<i class="bi bi-exclamation-triangle-fill text-danger"></i> Error processing update: ${error.message}`);
+            }
+        };
+        
+        // Handle connection errors
+        eventSource.onerror = function(event) {
+            console.error('EventSource error:', event);
+            
+            // Check if we've already received a completion message
+            // If so, this error is expected as the server closed the connection
+            const statusText = document.getElementById('status-text').textContent;
+            if (statusText.includes('complete') || statusMessage.className.includes('success')) {
+                console.log('Ignoring error after completion');
+                return;
+            }
+            
+            addLogMessage('<i class="bi bi-wifi-off text-warning"></i> Connection to server lost. Please check your network connection.');
+            document.getElementById('status-text').textContent = 'Connection to server lost. Please check your network connection.';
+            statusMessage.className = 'alert alert-warning';
+            document.getElementById('status-icon').className = 'bi bi-wifi-off status-icon';
+            eventSource.close();
+            
+            // Add a refresh button if it doesn't already exist
+            if (!document.querySelector('.refresh-button')) {
+                const refreshButton = document.createElement('div');
+                refreshButton.className = 'mt-3 text-center refresh-button';
+                refreshButton.innerHTML = `<button class="btn btn-warning" onclick="window.location.reload()">Refresh Page</button>`;
+                document.querySelector('.card-body').appendChild(refreshButton);
+            }
+        };
+        
+        // Test connection button
+        document.getElementById('test-connection').addEventListener('click', function() {
+            addLogMessage('Testing connection...');
+            fetch('/progress/' + '{{ conversion_id }}', { method: 'GET' })
+                .then(response => {
+                    if (response.ok) {
+                        addLogMessage('Connection test successful! Server is responding.');
+                    } else {
+                        addLogMessage('Connection test failed. Server returned status: ' + response.status);
+                    }
+                })
+                .catch(error => {
+                    addLogMessage('Connection test failed: ' + error.message);
+                });
+        });
+    });
+</script>
+{% endblock %}

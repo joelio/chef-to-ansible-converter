@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Convert Recipe - Chef to Ansible Converter{% endblock %}
+
+{% block content %}
+<h1>Convert Chef Recipe to Ansible</h1>
+<p class="lead">Paste your Chef recipe code to convert it to Ansible tasks and handlers.</p>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.recipe_content.label }}
+                {{ form.recipe_content(class="form-control", rows=15, placeholder="# Example Chef recipe\npackage 'nginx' do\n  action :install\nend") }}
+                {% if form.recipe_content.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.recipe_content.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-text text-muted">Paste your Chef recipe code here.</small>
+            </div>
+            
+            <div class="form-group">
+                {{ form.api_key.label }}
+                {{ form.api_key(class="form-control", placeholder="sk-ant-api03-...") }}
+                {% if form.api_key.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.api_key.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-text text-muted">Enter your Anthropic API key. If not provided, the server's API key will be used if available.</small>
+            </div>
+            
+            <div class="form-group">
+                {{ form.model.label }}
+                {{ form.model(class="form-control") }}
+                {% if form.model.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.model.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <small class="form-text text-muted">Select the Anthropic model to use for conversion.</small>
+            </div>
+            
+            <div class="form-group">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <h4 class="alert-heading">Example Chef Recipe</h4>
+    <pre>
+# Install nginx package
+package 'nginx' do
+  action :install
+end
+
+# Create document root directory
+directory '/var/www/html' do
+  owner 'www-data'
+  group 'www-data'
+  mode '0755'
+  recursive true
+  action :create
+end
+
+# Configure nginx
+template '/etc/nginx/nginx.conf' do
+  source 'nginx.conf.erb'
+  notifies :reload, 'service[nginx]'
+end
+
+# Start and enable nginx service
+service 'nginx' do
+  action [:enable, :start]
+end</pre>
+</div>
+{% endblock %}
