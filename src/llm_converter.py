@@ -518,15 +518,59 @@ Please provide the equivalent Ansible variables in YAML format.
         """
         ansible_templates = []
         
+        if not templates:
+            # If no templates were provided, create a sample template to demonstrate structure
+            print("No Chef templates found. Creating a sample template.")
+            sample_template = {
+                'name': 'sample',
+                'path': 'sample.j2',
+                'content': '# Sample Ansible template\n# This is a placeholder for demonstration purposes\n\n' +
+                          '# Example of variable usage:\n{{ ansible_hostname }}\n{{ inventory_hostname }}\n\n' +
+                          '# Example of conditional:\n{% if ansible_os_family == "Debian" %}\n' +
+                          'This is a Debian-based system\n{% elif ansible_os_family == "RedHat" %}\n' +
+                          'This is a RedHat-based system\n{% else %}\n' +
+                          'This is another type of system\n{% endif %}'
+            }
+            return [sample_template]
+        
         for template in templates:
-            if template['content'] is not None:
+            if not template or 'content' not in template or template['content'] is None:
+                continue
+                
+            try:
+                # Get the original path and name
+                original_path = template.get('path', '')
+                template_name = template.get('name', os.path.basename(original_path))
+                
                 # Convert ERB syntax to Jinja2
                 converted_content = self._convert_erb_to_jinja(template['content'])
                 
+                # Determine the new path (change .erb to .j2)
+                new_path = original_path
+                if original_path.endswith('.erb'):
+                    new_path = original_path[:-4] + '.j2'
+                elif not original_path.endswith('.j2'):
+                    new_path = original_path + '.j2'
+                
+                # Add a header to the template explaining it was converted
+                header = f"#\n# Ansible Template: {template_name}\n# Converted from Chef ERB template\n#\n\n"
+                converted_content = header + converted_content
+                
                 ansible_templates.append({
-                    'name': template['name'],
-                    'path': template['path'].replace('.erb', '.j2'),
+                    'name': template_name,
+                    'path': new_path,
                     'content': converted_content
+                })
+                
+                print(f"Converted template: {template_name} -> {new_path}")
+                
+            except Exception as e:
+                print(f"Error converting template {template.get('name', 'unknown')}: {str(e)}")
+                # Still include the template, but with an error message
+                ansible_templates.append({
+                    'name': template.get('name', 'error_template'),
+                    'path': template.get('path', 'error_template.j2').replace('.erb', '.j2'),
+                    'content': f"# Error converting template\n# {str(e)}\n\n{template.get('content', '')}"  
                 })
         
         return ansible_templates
@@ -541,20 +585,59 @@ Please provide the equivalent Ansible variables in YAML format.
         Returns:
             str: Jinja2 template content
         """
-        # Simple conversion of common ERB patterns to Jinja2
-        # This is a basic implementation and would need to be expanded for a real tool
-        
-        # Convert <%= ... %> to {{ ... }}
-        jinja_content = erb_content.replace('<%=', '{{').replace('%>', '}}')
-        
-        # Convert <% ... %> to {% ... %}
-        jinja_content = jinja_content.replace('<%', '{%').replace('%>', '%}')
-        
-        # Convert node['...'] to ansible variables
+        if not erb_content:
+            return ""
+            
         import re
-        jinja_content = re.sub(r"node\['([^']+)'\](?:\['([^']+)'\])?", 
-                              lambda m: f"{m.group(1)}_{m.group(2)}" if m.group(2) else m.group(1), 
-                              jinja_content)
+        
+        # Store the conversion in a log for debugging
+        conversion_log = ["ERB to Jinja2 conversion:"]
+        conversion_log.append(f"Original ERB:\n{erb_content[:200]}...")
+        
+        # Step 1: Handle ERB output tags (<%= ... %>) - convert to Jinja2 {{ ... }}
+        # But first, escape any existing {{ or }} in the content
+        jinja_content = erb_content.replace('{{', '\{\{').replace('}}', '\}\}')
+        jinja_content = re.sub(r'<%=\s*(.+?)\s*%>', r'{{ \1 }}', jinja_content)
+        
+        # Step 2: Handle ERB control flow tags (<% if ... %>, <% else %>, <% end %>, etc.)
+        # Convert if statements
+        jinja_content = re.sub(r'<%\s*if\s+(.+?)\s*%>', r'{% if \1 %}', jinja_content)
+        jinja_content = re.sub(r'<%\s*elsif\s+(.+?)\s*%>', r'{% elif \1 %}', jinja_content)
+        jinja_content = re.sub(r'<%\s*else\s*%>', r'{% else %}', jinja_content)
+        
+        # Convert loops
+        jinja_content = re.sub(r'<%\s*(.+?)\.each\s+do\s*\|\s*(.+?)\s*\|\s*%>', r'{% for \2 in \1 %}', jinja_content)
+        
+        # Convert end tags
+        jinja_content = re.sub(r'<%\s*end\s*%>', r'{% endfor %}', jinja_content)
+        # Check if we have more end tags than for tags, if so, convert some to endif
+        endfor_count = jinja_content.count('{% endfor %}')
+        for_count = len(re.findall(r'{%\s*for\s+', jinja_content))
+        if endfor_count > for_count:
+            # Replace the extra endfor tags with endif
+            jinja_content = jinja_content.replace('{% endfor %}', '{% endif %}', endfor_count - for_count)
+        
+        # Step 3: Convert remaining ERB tags (<% ... %>) to Jinja2 {% ... %}
+        jinja_content = re.sub(r'<%\s*(.+?)\s*%>', r'{% \1 %}', jinja_content)
+        
+        # Step 4: Convert Chef node attributes to Ansible variables
+        # node['attribute'] -> attribute
+        # node['section']['attribute'] -> section_attribute
+        jinja_content = re.sub(r"node\['([^']+)'\]\['([^']+)'\]\['([^']+)'\]", r"\1_\2_\3", jinja_content)
+        jinja_content = re.sub(r"node\['([^']+)'\]\['([^']+)'\]", r"\1_\2", jinja_content)
+        jinja_content = re.sub(r"node\['([^']+)'\]", r"\1", jinja_content)
+        
+        # Step 5: Convert Chef-specific functions to Ansible equivalents
+        # Chef's File.exist? -> Jinja2's is defined
+        jinja_content = re.sub(r"File\.exist\?\(['\"](.*?)['\"]\)", r"'\1' is defined", jinja_content)
+        
+        # Step 6: Convert Ruby string interpolation to Jinja2
+        # "#{variable}" -> "{{ variable }}"
+        jinja_content = re.sub(r'"([^"]*?)#\{(.+?)\}([^"]*?)"', r'"\1{{ \2 }}\3"', jinja_content)
+        
+        # Log the conversion result
+        conversion_log.append(f"Converted Jinja2:\n{jinja_content[:200]}...")
+        print("\n".join(conversion_log))
         
         return jinja_content
     
