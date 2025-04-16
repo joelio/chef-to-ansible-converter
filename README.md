@@ -1,25 +1,32 @@
 # Chef to Ansible Converter
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Test Coverage](https://img.shields.io/badge/coverage-68%25-yellow.svg)](https://github.com/joelio/chef-to-ansible-converter/actions)
+
 A Python-based tool that leverages Anthropic's Claude API to automatically convert Chef cookbooks to Ansible playbooks and roles, following Ansible best practices.
+
+**[Features](#features)** | **[Installation](#installation)** | **[Usage](#usage)** | **[Architecture](#architecture)** | **[Development](#development)** | **[Testing](#testing)** | **[Custom Resources](#custom-resource-handling)** | **[Metrics](#metrics-collection)** | **[License](#license)**
 
 ## Features
 
-- Clone and process Chef repositories
-- Parse Chef cookbook structures and recipes
-- Convert Chef code to Ansible using Anthropic's Claude API
-- Generate properly formatted Ansible playbooks and roles
-- Validate generated Ansible code with ansible-lint
-- Convert ERB templates to Jinja2 templates
-- Handle Chef-specific patterns and idioms
-- Comprehensive logging system for better debugging
-- Web UI for easy conversion (optional)
-- Robust error handling and validation
+- **Repository Processing**: Clone and process Chef repositories
+- **Cookbook Parsing**: Extract and understand Chef cookbook structures and recipes
+- **Intelligent Conversion**: Transform Chef code to Ansible using Anthropic's Claude API
+- **Ansible Generation**: Create properly formatted Ansible playbooks and roles
+- **Validation**: Verify generated Ansible code with ansible-lint
+- **Template Conversion**: Convert ERB templates to Jinja2 templates
+- **Custom Resource Handling**: Map Chef custom resources to Ansible modules
+- **Web UI**: Optional web interface for easy conversion
+- **Comprehensive Logging**: Detailed logging for better debugging
+- **Metrics Collection**: Track conversion quality and improvements
 
 ## Security Notice
 
 ⚠️ **IMPORTANT**: Do not use this tool with repositories containing sensitive information, credentials, or proprietary code. All code submitted for conversion is processed through external API services and may be stored or logged. Use only with non-sensitive, public, or test repositories.
 
-## Requirements
+## Installation
+
+### Prerequisites
 
 - Python 3.8+
 - Git
@@ -27,10 +34,35 @@ A Python-based tool that leverages Anthropic's Claude API to automatically conve
 - Ansible (for validation, optional)
 - ansible-lint (for validation, optional)
 
-## Installation
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/joelio/chef-to-ansible-converter.git
+   cd chef-to-ansible-converter
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env to add your Anthropic API key
+   ```
+
+### Docker Installation
+
+Alternatively, you can use Docker:
 
 ```bash
-pip install -r requirements.txt
+# Build the Docker image
+make build
+
+# Or manually
+docker build -t chef-to-ansible-converter .
 ```
 
 ## Usage
@@ -50,6 +82,9 @@ python cli.py <chef-repo-path> --output <output-directory> --validate
 
 # With verbose logging
 python cli.py <chef-repo-path> --output <output-directory> --log-level DEBUG
+
+# With custom resource mapping
+python cli.py <chef-repo-path> --output <output-directory> --resource-mapping ./my_mappings.json
 ```
 
 ### Using Makefile
@@ -74,6 +109,9 @@ make web
 
 # Run tests on a sample repository
 make test
+
+# Collect metrics on conversion quality
+make metrics
 
 # Clean up temporary files and directories
 make clean
@@ -113,44 +151,217 @@ The tool consists of several components:
 1. **Repository Handler** (`repo_handler.py`): Manages Git operations to clone and process Chef repositories
 2. **Chef Parser** (`chef_parser.py`): Extracts and understands Chef cookbook structures and recipes
 3. **LLM Conversion Engine** (`llm_converter.py`): Core component that transforms Chef code to Ansible using Claude
-4. **Ansible Generator** (`ansible_generator.py`): Creates properly formatted Ansible playbooks and roles
-5. **Validation Engine** (`validator.py`): Ensures generated Ansible code is syntactically correct
-6. **Logger** (`logger.py`): Provides structured logging throughout the application
-7. **Configuration** (`config.py`): Manages application settings and API credentials
-8. **CLI Interface** (`cli.py`): Command-line interface for the converter
-9. **Web UI** (`web/app.py`): Optional web interface for easier use
+4. **Resource Mapping** (`resource_mapping.py`): Maps Chef custom resources to Ansible modules
+5. **Ansible Generator** (`ansible_generator.py`): Creates properly formatted Ansible playbooks and roles
+6. **Validation Engine** (`validator.py`): Ensures generated Ansible code is syntactically correct
+7. **Logger** (`logger.py`): Provides structured logging throughout the application
+8. **Configuration** (`config.py`): Manages application settings and API credentials
+9. **CLI Interface** (`cli.py`): Command-line interface for the converter
+10. **Web UI** (`web/app.py`): Optional web interface for easier use
 
 ## Environment Variables
 
 The following environment variables can be used to configure the tool:
 
 - `ANTHROPIC_API_KEY`: Your Anthropic API key for Claude
+- `ANTHROPIC_MODEL`: Model to use (default: claude-3-7-sonnet-20250219)
 - `CHEF_TO_ANSIBLE_LOG_LEVEL`: Set logging level (DEBUG, INFO, WARNING, ERROR)
 - `CHEF_TO_ANSIBLE_LOG_FILE`: Path to log file (if not set, logs to console only)
+- `CHEF_TO_ANSIBLE_RESOURCE_MAPPING`: Path to custom resource mapping JSON file
+
+## Development
+
+### Project Structure
+
+```
+chef-to-ansible-converter/
+├── src/                      # Source code
+│   ├── ansible_generator.py  # Generates Ansible roles
+│   ├── chef_parser.py        # Parses Chef cookbooks
+│   ├── cli.py                # Command-line interface
+│   ├── config.py             # Configuration handling
+│   ├── llm_converter.py      # LLM conversion logic
+│   ├── logger.py             # Logging setup
+│   ├── repo_handler.py       # Git repository handling
+│   ├── resource_mapping.py   # Custom resource mapping
+│   └── validator.py          # Ansible validation
+├── tests/                    # Test suite
+├── config/                   # Configuration files
+│   └── resource_mappings.json # Default resource mappings
+├── examples/                 # Example Chef cookbooks
+├── web/                      # Web UI
+├── .github/workflows/        # GitHub Actions
+├── requirements.txt          # Python dependencies
+├── Dockerfile                # Docker configuration
+├── Makefile                  # Build and run commands
+└── README.md                 # This file
+```
+
+### Setting Up Development Environment
+
+1. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. Install development dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Set up pre-commit hooks:
+   ```bash
+   pre-commit install
+   ```
 
 ## Testing
 
-To run the automated tests that validate the converter's functionality:
+The project includes a comprehensive test suite:
 
 ```bash
-# Run tests on a sample repository
-make test
+# Run all tests
+python -m pytest
+
+# Run tests with coverage
+python -m pytest --cov=src
+
+# Run specific test modules
+python -m pytest tests/test_resource_mapping.py
 ```
 
-This will clone a test Chef repository, convert it to Ansible, and validate the results.
+### Test Structure
 
-### Advanced Testing
+- `tests/test_cli.py`: Tests for the command-line interface
+- `tests/test_chef_parser.py`: Tests for Chef cookbook parsing
+- `tests/test_llm_converter.py`: Tests for the LLM conversion engine
+- `tests/test_resource_mapping.py`: Tests for custom resource mapping
+- `tests/test_validator.py`: Tests for Ansible validation
+- `tests/test_custom_resource_handling.py`: Tests for custom resource handling
+- `tests/test_custom_resource_integration.py`: Integration tests for custom resources
 
-For more comprehensive testing across multiple repositories, you can use the metrics collection functionality:
+## Custom Resource Handling
+
+The converter includes a powerful custom resource mapping system that can automatically translate Chef custom resources to their Ansible equivalents.
+
+### Built-in Resource Mappings
+
+The system comes with mappings for common custom resources:
+
+- **Database Resources**: mysql_database, postgresql_database
+- **Web Server Resources**: apache2_site, nginx_site
+- **System Resources**: cron_job, systemd_unit
+- **Container Resources**: docker_container
+- **Cloud Resources**: aws_s3_bucket, kubernetes_deployment
+- **Windows Resources**: windows_feature
+
+### Customizable Mappings
+
+You can define your own mappings in a JSON configuration file:
+
+```json
+{
+  "my_custom_resource": {
+    "ansible_module": "namespace.collection.module",
+    "property_mapping": {
+      "chef_property": "ansible_parameter",
+      "value_mapping": {
+        "property_name": {"chef_value": "ansible_value"}
+      }
+    }
+  }
+}
+```
+
+### Usage
 
 ```bash
-# Run the metrics collection to test against multiple repositories
+# Use the default resource mappings
+make convert CHEF_REPO_PATH=./my-chef-repo
+
+# Use a custom resource mapping file
+make convert CHEF_REPO_PATH=./my-chef-repo RESOURCE_MAPPING=./my_mappings.json
+
+# Or with CLI
+python cli.py ./my-chef-repo --output ./my-ansible --resource-mapping ./my_mappings.json
+```
+
+### How It Works
+
+1. The LLM identifies custom resources in Chef code and marks them with specific patterns
+2. The post-processor extracts resource type and data from these placeholders
+3. The resource mapper applies appropriate mappings from the registry
+4. The converter generates proper Ansible tasks with the correct modules and parameters
+
+### Testing Custom Resources
+
+You can test the custom resource handling functionality:
+
+```bash
+# Run unit tests for resource mapping
+python -m pytest tests/test_resource_mapping.py
+
+# Run tests for LLM integration
+python -m pytest tests/test_custom_resource_handling.py
+
+# Run end-to-end conversion tests
+python -m pytest tests/test_custom_resource_integration.py
+
+# Run all custom resource tests with coverage
+python -m pytest tests/test_resource_mapping.py tests/test_custom_resource_handling.py tests/test_custom_resource_integration.py --cov=src.resource_mapping --cov=src.llm_converter
+```
+
+### Manual Testing
+
+Create a test Chef recipe with custom resources:
+
+```bash
+mkdir -p test_chef_repo/cookbooks/test/recipes
+cat > test_chef_repo/cookbooks/test/recipes/default.rb << 'EOF'
+mysql_database 'myapp' do
+  database_name 'myapp_production'
+  connection host: 'localhost'
+  user 'db_admin'
+  password 'secure_password'
+  action :create
+end
+EOF
+
+# Run the converter
+make convert CHEF_REPO_PATH=./test_chef_repo OUTPUT_PATH=./test_output
+
+# Examine the generated Ansible role
+cat test_output/test/tasks/main.yml
+```
+
+## Metrics Collection
+
+The converter includes a metrics collection system that tracks conversion quality and generates visualizations:
+
+```bash
+# Run metrics collection
 make metrics
 ```
 
-This will test the converter against several real-world Chef repositories and generate metrics on conversion quality.
+This will:
+1. Convert sample Chef cookbooks to Ansible roles
+2. Analyze the conversion quality
+3. Generate metrics on compliance with Ansible best practices
+4. Create charts and visualizations
 
-## Testing Results
+### Metrics Dashboard
+
+The metrics are available on the GitHub Pages site:
+https://joelio.github.io/chef-to-ansible-converter/metrics/
+
+### Available Metrics
+
+- **FQCN Compliance**: Use of Fully Qualified Collection Names
+- **Task Name Capitalization**: Proper capitalization in task names
+- **Boolean Values**: Use of true/false instead of yes/no
+- **Variable Definition**: Proper definition of variables
+
+## Conversion Results
 
 We've conducted extensive testing of the Chef to Ansible converter using multiple test harnesses and repositories. Here's what we found:
 
@@ -178,6 +389,11 @@ The converter successfully handles:
    - Node attributes → Ansible variables
    - Default attributes → defaults/main.yml
 
+5. **Custom Resources**:
+   - Database resources → community.mysql.mysql_db, etc.
+   - Web server resources → community.general.nginx_site, etc.
+   - System resources → ansible.builtin.systemd, etc.
+
 ### Real-World Testing
 
 We tested the converter against these real-world Chef repositories:
@@ -192,185 +408,10 @@ We tested the converter against these real-world Chef repositories:
    - Ruby blocks and complex conditionals need more sophisticated conversion
    - Nested logic structures sometimes lose their original intent
 
-2. **Custom Resources**: 
-   - Chef custom resources often require manual conversion to Ansible modules
-   - Domain-specific resources need special handling
-
-3. **Platform-Specific Code**: 
+2. **Platform-Specific Code**: 
    - OS-specific configurations need better mapping to Ansible facts
    - Some platform detection logic doesn't translate cleanly
 
-4. **Convergence Testing**: 
-   - Some converted roles pass linting but fail during actual execution
-   - Dependencies and prerequisites sometimes need manual adjustment
-
-### Performance
-
-The LLM-based conversion process takes approximately:
-- 3-5 seconds for simple recipes
-- 30-60 seconds for complex cookbooks with multiple recipes
-
-The quality of conversion is generally high, with most basic Chef patterns correctly translated to idiomatic Ansible code.
-
-## Docker Deployment
-
-The Chef to Ansible Converter can be easily deployed using Docker, which provides a consistent and isolated environment for running the converter without worrying about dependencies.
-
-### Using Make (Recommended)
-
-The project includes a Makefile for easy operation:
-
-```bash
-# Show available commands
-make help
-
-# Build the Docker image
-make build
-
-# Convert a Chef repository to Ansible roles
-make convert CHEF_REPO_PATH=/path/to/chef-repo OUTPUT_PATH=/path/to/output
-
-# Start the web UI
-make web
-
-# Run tests with a sample Chef repository
-make test
-
-# Clean up output directory
-make clean
-```
-
-You can configure the converter by setting environment variables:
-
-```bash
-# Set your API key (required)
-export ANTHROPIC_API_KEY=your_api_key
-
-# Set the model to use (optional)
-export MODEL=claude-3-7-sonnet-20250219
-
-# Set the log level (optional)
-export LOG_LEVEL=DEBUG
-
-# Run with custom configuration
-make convert CHEF_REPO_PATH=./my-chef-repo OUTPUT_PATH=./my-output
-```
-
-> **Security Note**: The Makefile never stores API keys. It securely passes them from environment variables to the Docker container at runtime. Your API key is never baked into any files or images.
-
-### Using Shell Script
-
-Alternatively, you can use the provided shell script:
-
-1. Build the Docker image:
-```bash
-./run-docker.sh build
-```
-
-2. Convert a Chef repository to Ansible roles:
-```bash
-./run-docker.sh --input=/path/to/chef-repo --output=/path/to/output convert
-```
-
-3. Start the web UI:
-```bash
-./run-docker.sh web
-```
-
-### Docker Compose
-
-You can also use Docker Compose to run the converter:
-
-```bash
-# Set your API key
-export ANTHROPIC_API_KEY=your_api_key
-
-# Set paths for Chef repo and output
-export CHEF_REPO_PATH=/path/to/chef-repo
-export OUTPUT_PATH=/path/to/output
-
-# Run the converter
-docker-compose up converter
-
-# Or run the web UI
-docker-compose up web
-```
-
-### Manual Docker Commands
-
-If you prefer to use Docker directly:
-
-```bash
-# Build the image
-docker build -t chef-to-ansible-converter .
-
-# Run the converter
-docker run -it --rm \
-  -v /path/to/chef-repo:/input \
-  -v /path/to/output:/output \
-  -e ANTHROPIC_API_KEY=your_api_key \
-  chef-to-ansible-converter convert
-
-# Run the web UI
-docker run -it --rm \
-  -p 5000:5000 \
-  -e ANTHROPIC_API_KEY=your_api_key \
-  chef-to-ansible-converter web
-```
-
-## Recent Improvements
-
-### Code Quality
-- Replaced print statements with structured logging
-- Improved exception handling with specific error types
-- Moved imports to the top of files for better readability
-- Enhanced subprocess usage with proper validation
-- Added type hints for better IDE support
-
-### Usability
-- Added comprehensive logging system
-- Improved error messages and feedback
-- Enhanced CLI with more options and better help text
-- Better handling of API keys and environment variables
-- Added Docker deployment for easier usage
-
-### Reliability
-- Added more robust error handling
-- Improved validation of generated Ansible code
-- Better handling of edge cases in Chef recipes
-- Containerized environment for consistent execution
-
-## Project Structure
-
-The Chef to Ansible Converter project is organized as follows:
-
-```
-├── Dockerfile              # Main Docker configuration
-├── Makefile               # Build and run commands
-├── README.md              # Project documentation
-├── chef-repo/             # Test Chef repositories
-├── cli.py                 # Command-line interface
-├── docker-compose.yml     # Docker Compose configuration
-├── docker-entrypoint.sh   # Docker container entry point
-├── requirements.txt       # Python dependencies
-├── run-docker.sh          # Alternative Docker runner script
-├── run_web_ui.py          # Web UI starter
-├── src/                   # Core source code
-│   ├── ansible_generator.py  # Generates Ansible roles
-│   ├── chef_parser.py        # Parses Chef cookbooks
-│   ├── config.py             # Configuration settings
-│   ├── llm_converter.py      # LLM conversion logic
-│   ├── logger.py             # Logging system
-│   ├── validator.py          # Validates generated code
-│   └── ...                   # Other modules
-├── tests/                 # Test suite
-└── web/                   # Web UI components
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
