@@ -276,14 +276,14 @@ jobs:
       
       # Upload metrics data as artifact
       - name: Upload metrics data
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: metrics-data
           path: metrics/
       
       # Upload generated charts as artifact
       - name: Upload charts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: metrics-charts
           path: charts/
