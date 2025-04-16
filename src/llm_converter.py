@@ -4,8 +4,15 @@ LLM converter module for the Chef to Ansible converter
 
 import os
 import json
+import re
+import sys
 from pathlib import Path
+
 import anthropic
+import yaml
+from ruamel.yaml import YAML
+
+from src.logger import logger
 
 class LLMConverter:
     """Converts Chef code to Ansible using Anthropic's Claude API"""
@@ -32,105 +39,39 @@ class LLMConverter:
         Returns:
             list: List of conversion examples
         """
-        # In a real implementation, these would be loaded from a file or database
-        # For now, we'll hardcode a few examples
+        # These examples follow Ansible best practices:
+        # 1. Use Fully Qualified Collection Names (FQCN) for modules
+        # 2. Use proper capitalization for handler names
+        # 3. Use 'true' and 'false' instead of 'yes' and 'no'
         return [
             {
-                "chef_code": """
-package 'nginx' do
-  action :install
-end
-                """,
-                "ansible_code": """
-- name: Install nginx
-  package:
-    name: nginx
-    state: present
-                """
+                "chef_code": "\npackage 'nginx' do\n  action :install\nend\n            ",
+                "ansible_code": "\n- name: Install nginx\n  ansible.builtin.package:\n    name: nginx\n    state: present\n            "
             },
             {
-                "chef_code": """
-template '/etc/nginx/nginx.conf' do
-  source 'nginx.conf.erb'
-  variables(
-    server_name: node['nginx']['server_name']
-  )
-  notifies :reload, 'service[nginx]'
-end
-                """,
-                "ansible_code": """
-- name: Configure nginx
-  template:
-    src: nginx.conf.j2
-    dest: /etc/nginx/nginx.conf
-  vars:
-    server_name: "{{ nginx_server_name }}"
-  notify: Reload nginx
-
-# In handlers section:
-- name: Reload nginx
-  service:
-    name: nginx
-    state: reloaded
-                """
+                "chef_code": "\ntemplate '/etc/nginx/nginx.conf' do\n  source 'nginx.conf.erb'\n  variables(\n    server_name: node['nginx']['server_name']\n  )\n  notifies :reload, 'service[nginx]'\nend\n            ",
+                "ansible_code": "\n- name: Configure nginx\n  ansible.builtin.template:\n    src: nginx.conf.j2\n    dest: /etc/nginx/nginx.conf\n  vars:\n    server_name: \"{{ nginx_server_name }}\"\n  notify: Reload nginx\n\n# In handlers section:\n- name: Reload nginx\n  ansible.builtin.service:\n    name: nginx\n    state: reloaded\n            "
             },
             {
-                "chef_code": """
-if platform_family?('debian')
-  package 'apt-transport-https'
-end
-                """,
-                "ansible_code": """
-- name: Install apt-transport-https
-  package:
-    name: apt-transport-https
-    state: present
-  when: ansible_facts['os_family'] == 'Debian'
-                """
+                "chef_code": "\nif platform_family?('debian')\n  package 'apt-transport-https'\nend\n            ",
+                "ansible_code": "\n- name: Install apt-transport-https\n  ansible.builtin.package:\n    name: apt-transport-https\n    state: present\n  when: ansible_facts['os_family'] == 'Debian'\n            "
             },
             {
-                "chef_code": """
-service 'nginx' do
-  action [:enable, :start]
-end
-                """,
-                "ansible_code": """
-- name: Enable and start nginx service
-  service:
-    name: nginx
-    state: started
-    enabled: yes
-                """
+                "chef_code": "\nservice 'nginx' do\n  action [:enable, :start]\nend\n            ",
+                "ansible_code": "\n- name: Enable and start nginx service\n  ansible.builtin.service:\n    name: nginx\n    state: started\n    enabled: true\n            "
             },
             {
-                "chef_code": """
-directory '/var/www/html' do
-  owner 'www-data'
-  group 'www-data'
-  mode '0755'
-  recursive true
-  action :create
-end
-                """,
-                "ansible_code": """
-- name: Create web directory
-  file:
-    path: /var/www/html
-    state: directory
-    owner: www-data
-    group: www-data
-    mode: '0755'
-    recurse: yes
-                """
+                "chef_code": "\ndirectory '/var/www/html' do\n  owner 'www-data'\n  group 'www-data'\n  mode '0755'\n  recursive true\n  action :create\nend\n            ",
+                "ansible_code": "\n- name: Create web directory\n  ansible.builtin.file:\n    path: /var/www/html\n    state: directory\n    owner: www-data\n    group: www-data\n    mode: '0755'\n    recurse: true\n            "
             }
-        ]
-    
-    def convert_cookbook(self, cookbook):
+]
+    def convert_cookbook(self, cookbook, feedback=None):
         """
         Convert a Chef cookbook to Ansible
         
         Args:
             cookbook (dict): Parsed cookbook
+            feedback (str): Feedback from previous conversion attempt
             
         Returns:
             dict: Converted Ansible code
@@ -161,7 +102,7 @@ end
                     'progress': (i / total_recipes) * 100
                 })
             
-            conversion_result = self.convert_recipe(recipe)
+            conversion_result = self.convert_recipe(recipe, feedback)
             
             # Add tasks and handlers from this recipe
             result['tasks'].extend(conversion_result.get('tasks', []))
@@ -181,18 +122,19 @@ end
         
         return result
     
-    def convert_recipe(self, recipe):
+    def convert_recipe(self, recipe, feedback=None):
         """
         Convert a Chef recipe to Ansible tasks
         
         Args:
             recipe (dict): Parsed recipe data
+            feedback (str): Feedback from previous conversion attempt
             
         Returns:
             dict: Converted Ansible tasks and handlers
         """
         # Build the prompt for the LLM
-        prompt = self._build_conversion_prompt(recipe)
+        prompt = self._build_conversion_prompt(recipe, feedback)
         
         # Call the Anthropic API
         response = self._call_anthropic_api(prompt)
@@ -200,12 +142,13 @@ end
         # Extract Ansible tasks and handlers from the response
         return self._extract_ansible_code(response)
     
-    def _build_conversion_prompt(self, recipe):
+    def _build_conversion_prompt(self, recipe, feedback=None):
         """
         Build a prompt for the LLM to convert a Chef recipe to Ansible
         
         Args:
             recipe (dict): Parsed recipe data
+            feedback (str): Feedback from previous conversion attempt
             
         Returns:
             str: Prompt for the LLM
@@ -221,9 +164,254 @@ end
         prompt = f"""
 You are an expert in both Chef and Ansible configuration management systems. Your task is to convert Chef code to equivalent Ansible code.
 
-Here are some examples of Chef code and their Ansible equivalents:
+IMPORTANT: Follow these Ansible best practices in your conversion:
+1. Always use Fully Qualified Collection Names (FQCN) for modules (e.g., 'ansible.builtin.template' instead of 'template')
+2. Capitalize the first letter of all task and handler names (e.g., 'Restart nginx' not 'restart nginx')
+3. Use 'true' and 'false' for boolean values, not 'yes' and 'no'
+4. NEVER use reserved variable names like 'name', 'and', 'or', 'not', etc. Rename them (e.g., use 'hostname' instead of 'name')
+5. Use proper indentation and formatting in YAML (2 spaces for indentation)
+6. Use safe conditional checks in templates (e.g., '{{% if var is defined and var %}}')
+7. Make handlers robust by adding ignore_errors: "{{{{ ansible_check_mode }}}}" for service restarts
 
-{examples_text}
+CRITICAL VARIABLE HANDLING REQUIREMENTS:
+1. ALWAYS define ALL variables used in tasks and templates in the Variables section
+2. For Chef node attributes like 'node[:nginx][:dir]', create corresponding Ansible variables (e.g., nginx_dir)
+3. ALWAYS include these common nginx variables if the recipe uses nginx:
+   - nginx_dir: /etc/nginx
+   - nginx_user: nginx
+   - nginx_root: /var/www/html
+   - nginx_conf_d: "{{ nginx_dir }}/conf.d"
+   - nginx_version: "1.20.0"
+   - nginx_log_dir: /var/log/nginx
+   - nginx_error_log: "{{ nginx_log_dir }}/error.log"
+   - nginx_access_log: "{{ nginx_log_dir }}/access.log"
+4. If the recipe includes 'include_attribute' statements, you MUST define those external variables
+5. ALWAYS define system-related variables and provide safe defaults for Ansible facts:
+   - hostname: "{{ inventory_hostname }}"
+   - fqdn: "{{ ansible_fqdn | default(inventory_hostname) }}"
+   - domain: "{{ ansible_domain | default('example.com') }}"
+   - ansible_default_ipv4: 
+      address: "127.0.0.1"
+   - ansible_hostname: "{{ inventory_hostname | default('localhost') }}"
+   - ansible_os_family: "{{ ansible_os_family | default('RedHat') }}"
+   
+6. For cloud provider specific variables, include these defaults:
+   - ec2:
+       instance_id: "i-0123456789abcdef0"
+       public_hostname: "ec2-example.compute.amazonaws.com"
+       public_ipv4: "127.0.0.1"
+       local_hostname: "ip-10-0-0-1.ec2.internal"
+       local_ipv4: "10.0.0.1"
+       placement_availability_zone: "us-east-1a"
+   - ec2_instance_type: "t3.micro"
+   - ec2_instance_id: "{{ ec2.instance_id | default('i-0123456789abcdef0') }}"
+   - cloud_provider: "aws"
+7. For platform-specific variables, provide sensible default values based on common configurations
+8. NEVER leave undefined variables in tasks - ALL variables referenced in tasks must be defined
+9. SCAN ALL templates for variables (enclosed in <%= %> or {{ }}) and define ALL of them
+10. When handling nested dictionaries and complex data structures:
+   - Always initialize complex structures with empty defaults
+   - For example: nginx_example_remote_files_www: (empty dictionary)
+   - Check if dictionaries exist before using filters like dict2items
+   - Use the default filter when accessing potentially undefined dictionaries
+
+DIRECTORY CREATION REQUIREMENTS:
+1. ALWAYS create parent directories before creating files in them
+2. For example, before creating /etc/nginx/conf.d/app.conf, first add a task to create /etc/nginx/conf.d
+3. Make your roles self-sufficient - never assume directories exist
+4. Use the ansible.builtin.file module with state: directory to create directories
+
+USER HANDLING REQUIREMENTS:
+1. NEVER assume users exist on the target system
+2. Use variables for all users referenced in tasks (e.g., owner: "{{ nginx_user }}")
+3. For setting ownership, prefer using variables over hardcoded user names
+4. CRITICALLY IMPORTANT: The FIRST task in your role MUST create any users that will be referenced later
+5. The complete order of operations for each role should be:
+   a. First, create all required users
+   b. Second, create all required directories
+   c. Then create/modify files and set permissions
+   d. Finally, start services or run commands
+6. Example of proper user creation at the beginning of tasks:
+   ```yaml
+   - name: Create nginx user
+     ansible.builtin.user:
+       name: "{{ nginx_user }}"
+       system: yes
+     become: true
+     ignore_errors: "{{ ansible_check_mode | default(false) }}"
+   ```
+
+TEMPLATE HANDLING REQUIREMENTS:
+1. IMPORTANT: All ERB templates (.erb) are converted to Jinja2 templates (.j2)
+2. When referencing templates in tasks, use the .j2 extension (e.g., 'application.conf.j2' not 'application.conf.erb')
+3. In ansible.builtin.template module, use src: 'filename.j2' not the original ERB filename
+
+SERVICE MANAGEMENT REQUIREMENTS:
+1. For services managed by Chef notifies, use the appropriate Ansible handler and module
+2. For handlers that restart services, add ignore_errors: true to prevent playbook failures
+3. Use consistent service naming across all tasks
+4. CRITICAL: Deduplicate handlers for the same service:
+   - For the same service with the same action (restart/reload), create only ONE handler
+   - If Chef has both immediate and delayed notifications, combine them into a single handler
+   - Use distinct handler names for different actions on the same service (restart vs reload)
+   - Never create multiple handlers with the same service and action but different names
+5. Example service handler with proper error handling:
+   ```yaml
+   - name: Restart nginx
+     ansible.builtin.service:
+       name: nginx
+       state: restarted
+     become: true
+     ignore_errors: true
+     register: nginx_restart
+     failed_when:
+       - nginx_restart is failed
+       - '"Could not find the requested service" not in nginx_restart.msg'
+   ```
+
+DEPENDENCY MANAGEMENT REQUIREMENTS:
+1. Chef cookbooks often rely on external dependencies - create self-contained Ansible roles
+2. If the Chef recipe installs packages, use ansible.builtin.package or the appropriate OS-specific module
+3. Always check if packages are installed before using their services
+4. For repository management:
+   - For yum repositories, use ansible.builtin.yum_repository
+   - For apt repositories, use ansible.builtin.apt_repository
+   - Never use command modules to manage repositories when specific modules exist
+5. For package caching:
+   - Use ansible.builtin.yum with state: makecache instead of commands
+   - Do not use warn parameter with command modules as it's deprecated
+6. Example package installation with OS-specific handling:
+   ```yaml
+   - name: Install nginx package
+     ansible.builtin.package:
+       name: nginx
+       state: present
+     become: true
+   ```
+
+ERROR HANDLING REQUIREMENTS:
+1. Make your Ansible roles robust by including appropriate error handling
+2. Use ignore_errors, failed_when, and changed_when as appropriate
+3. Register command outputs and check return codes for failure conditions
+4. For file operations, always check if files exist before modifying them
+5. Example robust command execution:
+   ```yaml
+   - name: Run a command
+     ansible.builtin.command: /usr/bin/somecommand
+     register: command_result
+     failed_when: command_result.rc != 0 and command_result.rc != 2
+     changed_when: command_result.rc == 0
+     ignore_errors: "{{ ansible_check_mode | default(false) }}"
+   ```
+
+CONDITIONAL LOGIC REQUIREMENTS:
+1. Convert Chef conditionals to Ansible conditionals using 'when:' statements
+2. Handle platform-specific logic using ansible_facts variables
+3. Chef 'only_if' and 'not_if' should be converted to appropriate 'when:' conditions
+4. For complex conditions, use Ansible's and/or/not operators correctly
+5. Example conversions:
+   - Chef only_if condition → Ansible when condition
+   - Chef not_if condition → Ansible when: not condition
+   - Chef platform check → Ansible ansible_distribution check
+
+PLATFORM-SPECIFIC HANDLING:
+1. Convert Chef platform-specific code to Ansible distribution and OS family checks
+2. Use ansible_distribution, ansible_os_family, and ansible_distribution_version facts
+3. Handle different package managers based on OS family (apt vs yum vs dnf)
+4. Create variables with OS-specific defaults that can be overridden
+5. Example platform-specific package installation:
+   ```yaml
+   - name: Install required packages
+     ansible.builtin.package:
+       name: "{{ item }}"
+       state: present
+     loop: "{{ required_packages }}"
+     vars:
+       required_packages: "{{ debian_packages if ansible_os_family == 'Debian' else rhel_packages }}"
+     when: not ansible_check_mode
+   ```
+
+RUBY-TO-YAML CONVERSION GUIDELINES:
+1. Chef uses Ruby syntax, Ansible uses YAML - ensure proper translation
+2. Convert Chef arrays to Ansible lists with proper YAML syntax
+3. Convert Chef hashes to Ansible dictionaries with proper YAML syntax
+4. Convert Chef blocks to Ansible task sequences
+5. Convert Chef Ruby string interpolation to Ansible Jinja2 variables
+6. Convert Chef Ruby conditionals to Ansible when statements
+7. Ensure proper indentation in YAML output
+8. When converting nested Chef node attributes to Ansible variables:
+   - Chef: node['nginx']['sites']['default']['root'] = '/var/www/html'
+   - Ansible: nginx_sites_default_root: '/var/www/html'
+   - Always initialize nested dictionaries with empty values where needed: nginx_sites: (empty dictionary)
+
+CHEF-TO-ANSIBLE RESOURCE MAPPING:
+1. Convert Chef resources to their Ansible module equivalents as follows:
+   - Chef 'package' → ansible.builtin.package
+   - Chef 'template' → ansible.builtin.template
+   - Chef 'cookbook_file' → ansible.builtin.copy
+   - Chef 'file' → ansible.builtin.file
+   - Chef 'directory' → ansible.builtin.file with state: directory
+   - Chef 'service' → ansible.builtin.service
+   - Chef 'execute' → ansible.builtin.command or ansible.builtin.shell
+     - For ansible.builtin.command, ONLY use supported parameters: 
+       - cmd or free-form parameter (required)
+       - chdir, creates, executable, removes, stdin
+       - DO NOT use: warn (deprecated)
+   - Chef 'remote_file' → ansible.builtin.get_url
+   - Chef 'git' → ansible.builtin.git
+   - Chef 'user' → ansible.builtin.user
+   - Chef 'group' → ansible.builtin.group
+   - Chef 'mount' → ansible.builtin.mount
+   - Chef 'cron' → ansible.builtin.cron
+   - Chef 'apt_repository' → ansible.builtin.apt_repository
+   - Chef 'yum_repository' → ansible.builtin.yum_repository
+
+2. For Chef 'notifies' actions:
+   - Chef immediate notification (:immediately) → Ansible flush_handlers
+   - Chef delayed notification (:delayed) → Ansible normal notification
+
+3. For Chef guard properties:
+   - Chef 'only_if' → Ansible 'when' condition
+   - Chef 'not_if' → Ansible 'when: not' condition
+
+4. For Chef attributes:
+   - Chef 'node[...]' attributes → Ansible variables
+   - Chef 'data_bag_item' → Ansible variables or ansible.builtin.include_vars
+
+VERIFICATION REQUIREMENTS:
+Before finalizing your response, you MUST verify that your Ansible conversion meets all requirements above by checking:
+
+1. VALIDATE ALL TASKS:
+   - Every task has a properly capitalized name that clearly describes its purpose
+   - All module names use Fully Qualified Collection Names (FQCN)
+   - Boolean values use 'true' and 'false', not 'yes' and 'no'
+   - No tasks use removed/deprecated parameters
+   - All required parameters for each module are specified
+   - Task ordering follows logical progression (users first, then directories, etc.)
+
+2. VALIDATE ALL VARIABLES:
+   - Every variable referenced in tasks and templates is defined in the variables section
+   - No reserved names are used (name, and, or, not, etc.)
+   - Nested dictionaries are properly initialized
+   - Default values are provided for all variables
+   - Chef node attributes are correctly converted to Ansible variables
+
+3. VALIDATE ALL HANDLERS:
+   - Handlers exist for all notified services
+   - No duplicate handlers for the same service and action
+   - Handler names are properly capitalized
+   - Handlers include proper error handling (ignore_errors where appropriate)
+
+4. VALIDATE DIRECTORIES AND PERMISSIONS:
+   - Parent directories are created before files that use them
+   - User/group references use variables, not hardcoded values
+   - Directory permissions are set appropriately
+
+5. VERIFY TEMPLATE HANDLING:
+   - Template references use .j2 extension, not .erb
+   - Template variables are properly converted from ERB to Jinja2 syntax
+
+YOU MUST CORRECT ANY ISSUES FOUND DURING VERIFICATION BEFORE PROVIDING YOUR FINAL ANSWER.
 
 Now, please convert the following Chef recipe to Ansible, clearly separating tasks and handlers:
 
@@ -232,31 +420,54 @@ CHEF CODE:
 {recipe['content']}
 ```
 
-Please provide the output in two separate YAML blocks: one for tasks and one for handlers.
+{self._get_feedback_text(feedback)}
+
+Please provide the output in three separate blocks: tasks, handlers, and variables.
 
 For the handlers section, ONLY include handlers that are referenced by 'notifies' in the Chef recipe. Do NOT duplicate the tasks in the handlers section.
+
+For the variables section, INCLUDE ALL variables used in the tasks and templates, even those that might come from external cookbooks.
 
 Format your response like this:
 
 # Tasks
 ```yaml
 - name: Task 1
-  module:
+  ansible.builtin.module:
     param: value
 ```
 
 # Handlers
 ```yaml
 - name: Handler 1
-  module:
+  ansible.builtin.module:
     param: value
+    ignore_errors: "{{ ansible_check_mode }}"
+```
+
+# Variables
+```yaml
+# Define all variables used in the tasks and templates
+# Include variables for external dependencies
+
+# Nginx variables
+nginx_dir: /etc/nginx
+nginx_user: nginx
+nginx_root: /var/www/html
+nginx_conf_d: "{{ nginx_dir }}/conf.d"
+
+# Application variables
+application_dir: "{{ nginx_root }}/application"
+
+# Other variables used in tasks
+some_other_var: default_value
 ```
 
 ANSIBLE CODE:
+
 """
         
         return prompt
-    
     def _call_anthropic_api(self, prompt):
         """
         Call the Anthropic API to convert Chef code to Ansible
@@ -292,7 +503,7 @@ ANSIBLE CODE:
             )
             
             if self.config.verbose:
-                print("API call successful")
+                logger.debug("API call successful")
             
             # Send progress update
             if self.progress_callback:
@@ -304,7 +515,7 @@ ANSIBLE CODE:
                 
             return message.content[0].text
         except Exception as e:
-            print(f"API Error: {str(e)}")
+            logger.error(f"API Error: {str(e)}")
             
             # Send error update
             if self.progress_callback:
@@ -316,31 +527,65 @@ ANSIBLE CODE:
                 
             raise RuntimeError(f"Error calling Anthropic API: {str(e)}")
     
-    def _extract_ansible_code(self, response):
-        """
-        Extract Ansible tasks and handlers from the LLM response
+    def _get_feedback_text(self, feedback):
+        """Format feedback text for inclusion in the prompt
         
         Args:
-            response (str): Response from the LLM
+            feedback (str): Feedback from previous conversion attempt
             
         Returns:
-            dict: Extracted tasks and handlers
+            str: Formatted feedback text or empty string if no feedback
+        """
+        if not feedback:
+            return ""
+            
+        return f"""FEEDBACK FROM PREVIOUS CONVERSION:
+{feedback}
+
+YOU MUST FIX ALL ISSUES MENTIONED IN THE FEEDBACK ABOVE! Particularly:
+1. If any directories don't exist, add tasks to create them BEFORE using them
+2. If any users don't exist, either create them or use variables that can be overridden
+3. Fix any undefined variables by adding them to defaults/main.yml"""
+    
+    def _extract_ansible_code(self, response):
+        """Extract Ansible code from the LLM response
+        
+        Args:
+            response (str): LLM response
+            
+        Returns:
+            dict: Extracted Ansible code
         """
         # Initialize result
         result = {
             'tasks': [],
-            'handlers': []
+            'handlers': [],
+            'variables': {}
         }
         
-        # Look for sections labeled as tasks and handlers
+        # Look for sections labeled as tasks, handlers, and variables
         tasks_section = self._extract_section(response, "Tasks")
         handlers_section = self._extract_section(response, "Handlers")
+        variables_section = self._extract_section(response, "Variables")
         
         if tasks_section:
             result['tasks'] = self._parse_yaml_content(tasks_section)
         
         if handlers_section:
             result['handlers'] = self._parse_yaml_content(handlers_section)
+            
+        if variables_section:
+            # Parse variables as a dictionary instead of a list
+            try:
+                variables_yaml = variables_section.strip()
+                if variables_yaml:
+                    # Remove comments from variables section
+                    cleaned_variables = '\n'.join([line for line in variables_yaml.split('\n') 
+                                                  if not line.strip().startswith('#')])
+                    result['variables'] = yaml.safe_load(cleaned_variables) or {}
+            except Exception as e:
+                logger.warning(f"Error parsing response as YAML: {str(e)}")
+                result['variables'] = {}
         
         # If no specific sections found, try to extract based on code blocks
         if not result['tasks'] and not result['handlers']:
@@ -365,7 +610,7 @@ ANSIBLE CODE:
         
         # Log extraction results if verbose
         if self.config.verbose and hasattr(self.config, 'verbose'):
-            print(f"Extracted {len(result['tasks'])} tasks and {len(result['handlers'])} handlers")
+            logger.debug(f"Extracted {len(result['tasks'])} tasks and {len(result['handlers'])} handlers")
         
         return result
     
@@ -448,8 +693,6 @@ ANSIBLE CODE:
         Returns:
             list: Parsed YAML content
         """
-        import yaml
-        
         try:
             # Try to parse the YAML content
             parsed = yaml.safe_load(yaml_content)
@@ -461,8 +704,12 @@ ANSIBLE CODE:
                 return parsed
             else:
                 return [parsed]
-        except Exception:
+        except yaml.YAMLError as e:
+            logger.warning(f"YAML parsing failed: {e}")
+            return []
+        except Exception as e:
             # If parsing fails, return empty list
+            logger.error(f"Error parsing YAML: {str(e)}")
             return []
     
     def convert_attributes(self, attributes):
@@ -662,6 +909,10 @@ Please provide the equivalent Ansible variables in YAML format.
         # Log the conversion result
         conversion_log.append(f"Converted Jinja2:\n{jinja_content[:200]}...")
         print("\n".join(conversion_log))
+        
+        # Replace reserved variable names
+        jinja_content = jinja_content.replace("{{ name }}", "{{ hostname }}")
+        jinja_content = jinja_content.replace("{% if name", "{% if hostname")
         
         return jinja_content
     

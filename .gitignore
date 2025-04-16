@@ -47,6 +47,34 @@ Thumbs.db
 test-output*/
 ansible_roles*/
 .vagrant/
+output*/
+chef-repo/*/
+*_report.md
+*_test_output*/
 
-# Local Netlify folder
-.netlify
+# Docker related
+.docker/
+docker-compose.override.yml
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.bak
+
+# Cleanup and temporary scripts
+cleanup.sh
+repo_cleanup.sh
+prepare_for_push.sh
+direct_api_test.py
+$REPORT_FILE
+final_commit.sh
+
+# Development files
+cloud-localds
+collect_metrics.py
+fix_reserved_variables.py
+improve_converter_final.py
+improve_converter_fixed.py
+src/ansible_generator_fix.py
+

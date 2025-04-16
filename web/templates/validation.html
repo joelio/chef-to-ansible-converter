@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="validation-results">
+    <h2>Validation Results</h2>
+    
+    {% if is_valid %}
+    <div class="alert alert-success">
+        Validation PASSED
+    </div>
+    {% else %}
+    <div class="alert alert-danger">
+        Validation FAILED
+    </div>
+    {% endif %}
+    
+    <h3>Details</h3>
+    
+    {% if passed %}
+    <h4>✅ Passed Checks</h4>
+    <ul>
+        {% for item in passed %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    
+    {% if warnings %}
+    <h4>⚠️ Warnings</h4>
+    <ul>
+        {% for item in warnings %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    
+    {% if errors %}
+    <h4>❌ Errors</h4>
+    <ul>
+        {% for item in errors %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endblock %}

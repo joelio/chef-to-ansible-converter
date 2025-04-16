@@ -1,0 +1,4 @@
+---
+- name: Test task
+  ansible.builtin.debug:
+    msg: "This is a test task"

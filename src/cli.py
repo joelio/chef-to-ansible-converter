@@ -5,11 +5,11 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from ansible_generator import AnsibleGenerator
-from chef_parser import ChefParser
-from config import Config
-from llm_converter import LLMConverter
-from validator import AnsibleValidator
+from src.ansible_generator import AnsibleGenerator
+from src.chef_parser import ChefParser
+from src.config import Config
+from src.llm_converter import LLMConverter
+from src.validator import AnsibleValidator
 
 def progress_callback(message: str):
     """Callback function for progress updates"""

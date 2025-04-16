@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  converter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chef-to-ansible-converter:latest
+    container_name: chef-to-ansible-converter
+    volumes:
+      - ${CHEF_REPO_PATH:-./chef-repo}:/input
+      - ${OUTPUT_PATH:-./output}:/output
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-7-sonnet-20250219}
+      - CHEF_TO_ANSIBLE_LOG_LEVEL=${LOG_LEVEL:-INFO}
+    command: convert
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chef-to-ansible-converter:latest
+    container_name: chef-to-ansible-web
+    ports:
+      - "5000:5000"
+    volumes:
+      - ${OUTPUT_PATH:-./output}:/output
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-7-sonnet-20250219}
+      - CHEF_TO_ANSIBLE_LOG_LEVEL=${LOG_LEVEL:-INFO}
+    command: web
+    restart: "unless-stopped"

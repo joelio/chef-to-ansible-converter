@@ -1,0 +1,26 @@
+---
+# Validation playbook for testing converted Chef to Ansible roles
+- name: Validate converted Chef role
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  
+  vars:
+    role_name: "{{ role | default('test_role') }}"
+    
+  pre_tasks:
+    - name: Display role being tested
+      debug:
+        msg: "Testing role: {{ role_name }}"
+        
+    - name: Ensure required directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "/tmp/ansible-test"
+        - "/tmp/ansible-test/output"
+      
+  roles:
+    - role: "{{ role_name }}"

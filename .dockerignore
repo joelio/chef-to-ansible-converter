@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+.github
+
+# Environment variables
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker
+.dockerignore
+
+# Test files and directories
+test*/
+tests/
+*_test.py
+*_test_*.py
+test_*.py
+*_test.sh
+test_*.sh
+*_test_*.sh
+
+# Output directories
+output*/
+ansible_roles*/
+temp*/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Vagrant
+.vagrant/
+Vagrantfile
+
+# Other
+.DS_Store
+.vscode/
+.idea/
+*.log
+*.zip
+*.tar.gz

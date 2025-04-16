@@ -5,8 +5,11 @@ import os
 import subprocess
 import tempfile
 import shutil
-import yaml
 from pathlib import Path
+
+import yaml
+
+from src.logger import logger
 
 class AnsibleValidator:
     """
@@ -23,6 +26,7 @@ class AnsibleValidator:
             'warnings': [],
             'passed': []
         }
+        self.logger = logger
     
     def validate(self, role_path):
         """Validate an Ansible role
@@ -63,10 +67,13 @@ class AnsibleValidator:
             # Dynamic testing (optional based on environment)
             self._test_role_execution(role_path)
         except Exception as e:
-            self.results['errors'].append(f"Validation error: {str(e)}")
+            error_msg = f"Validation error: {str(e)}"
+            self.results['errors'].append(error_msg)
+            logger.error(error_msg)
         
-        # Generate report
-        self._generate_report()
+        # Generate report if verbose
+        if self.verbose:
+            self._generate_report()
         
         # Return validation results
         return {
@@ -103,7 +110,9 @@ class AnsibleValidator:
                             yaml.safe_load(f)
                         self.results['passed'].append(f"Valid YAML: {path}")
         except yaml.YAMLError as e:
-            self.results['errors'].append(f"Invalid YAML in {path}: {str(e)}")
+            error_msg = f"Invalid YAML in {path}: {str(e)}"
+            self.results['errors'].append(error_msg)
+            logger.error(error_msg)
     
     def _validate_linting(self, role_path):
         """Run ansible-lint"""
@@ -111,17 +120,22 @@ class AnsibleValidator:
             result = subprocess.run(
                 ['ansible-lint', role_path],
                 capture_output=True,
-                text=True
+                text=True,
+                check=False  # Don't raise exception on non-zero exit
             )
             
             if result.returncode == 0:
                 self.results['passed'].append("ansible-lint passed")
+                logger.info("ansible-lint validation passed")
             else:
-                self.results['warnings'].append(
-                    f"ansible-lint issues:\n{result.stdout}"
-                )
+                warning_msg = f"ansible-lint issues:\n{result.stdout}"
+                self.results['warnings'].append(warning_msg)
+                logger.warning(f"ansible-lint found issues: {result.returncode}")
+                logger.debug(warning_msg)
         except Exception as e:
-            self.results['errors'].append(f"Linting failed: {str(e)}")
+            error_msg = f"Linting failed: {str(e)}"
+            self.results['errors'].append(error_msg)
+            logger.error(error_msg)
     
     def _validate_variable_naming(self, role_path):
         """Check variable naming conventions"""
@@ -169,36 +183,40 @@ class AnsibleValidator:
                 ['ansible-playbook', '-i', 'inventory', '--check', 'test.yml'],
                 cwd=test_dir,
                 capture_output=True,
-                text=True
+                text=True,
+                check=False  # Don't raise exception on non-zero exit
             )
             
             if result.returncode == 0:
                 self.results['passed'].append("Dry-run execution successful")
+                logger.info("Ansible playbook dry-run successful")
             else:
-                self.results['errors'].append(
-                    f"Dry-run failed:\n{result.stderr}"
-                )
+                error_msg = f"Dry-run failed:\n{result.stderr}"
+                self.results['errors'].append(error_msg)
+                logger.error(f"Ansible playbook dry-run failed with exit code {result.returncode}")
+                logger.debug(error_msg)
             
         except Exception as e:
-            self.results['errors'].append(f"Execution test failed: {str(e)}")
+            error_msg = f"Execution test failed: {str(e)}"
+            self.results['errors'].append(error_msg)
+            logger.error(error_msg)
         finally:
             shutil.rmtree(test_dir, ignore_errors=True)
     
     def _generate_report(self):
         """Generate validation report"""
-        print("\n=== Validation Report ===\n")
+        logger.info("=== Validation Report ===")
         
-        if self.verbose:
-            for item in self.results['passed']:
-                print(f"✅ {item}")
-            
-            for item in self.results['warnings']:
-                print(f"⚠️  {item}")
-            
-            for item in self.results['errors']:
-                print(f"❌ {item}")
+        for item in self.results['passed']:
+            logger.info(f"✅ {item}")
         
-        print(f"\nSummary: {len(self.results['passed'])} passed, "
+        for item in self.results['warnings']:
+            logger.warning(f"⚠️  {item}")
+        
+        for item in self.results['errors']:
+            logger.error(f"❌ {item}")
+        
+        logger.info(f"Summary: {len(self.results['passed'])} passed, "
               f"{len(self.results['warnings'])} warnings, "
               f"{len(self.results['errors'])} errors")
         

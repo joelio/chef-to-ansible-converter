@@ -1,0 +1,15 @@
+---
+- name: Test converted Ansible roles
+  hosts: default
+  become: yes
+  roles:
+    - role: "ansible_roles_hello_world/application"
+  tasks:
+    - name: Verify installation
+      ansible.builtin.command: ls -la /var/www/application
+      register: verification
+      changed_when: false
+    
+    - name: Show verification results
+      ansible.builtin.debug:
+        var: verification.stdout_lines

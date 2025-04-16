@@ -684,6 +684,20 @@ def view_file(conversion_id, cookbook, file_type):
                           file_type=file_type,
                           conversion_id=conversion_id)
 
+@app.route('/validation_results/<path:role_path>')
+def show_validation(role_path):
+    """Display validation results for a role"""
+    validator = AnsibleValidator()
+    is_valid = validator.validate_role(role_path)
+    
+    return render_template(
+        'validation.html',
+        passed=validator.results['passed'],
+        warnings=validator.results['warnings'],
+        errors=validator.results['errors'],
+        is_valid=is_valid
+    )
+
 @app.errorhandler(404)
 def page_not_found(e):
     """Handle 404 errors"""

@@ -1,0 +1,8 @@
+---
+- name: Test converted role
+  hosts: localhost
+  become: true
+  roles:
+    - role: test_role
+      # Add any necessary role variables here
+      # role_var: value

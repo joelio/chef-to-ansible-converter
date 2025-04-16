@@ -19,12 +19,16 @@ class ChefParser:
         Find all cookbooks in a repository
         
         Args:
-            repo_path (Path): Path to the repository
+            repo_path (str or Path): Path to the repository
             
         Returns:
             list: List of dictionaries containing cookbook information
         """
         cookbooks = []
+        
+        # Convert string path to Path object if needed
+        if isinstance(repo_path, str):
+            repo_path = Path(repo_path)
         
         # Look for metadata.rb files which indicate a cookbook
         for metadata_file in repo_path.glob('**/metadata.rb'):
