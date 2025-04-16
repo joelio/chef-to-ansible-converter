@@ -43,7 +43,9 @@ jobs:
     - name: Setup test repositories
       run: |
         mkdir -p test-repos
-        git clone https://github.com/chef-solo-hello-world/chef-solo-hello-world.git test-repos/chef-solo-hello-world || echo "Already exists"
+        git clone https://github.com/karmi/chef-solo-hello-world.git test-repos/chef-solo-hello-world || echo "Already exists"
+        git clone https://github.com/sous-chefs/nginx.git test-repos/nginx || echo "Already exists"
+        git clone https://github.com/sous-chefs/postgresql.git test-repos/postgresql || echo "Already exists"
     
     - name: Run unit tests
       run: |

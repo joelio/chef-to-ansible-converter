@@ -50,9 +50,9 @@ jobs:
       - name: Clone test repositories
         run: |
           mkdir -p test-repos
-          git clone https://github.com/karmi/chef-solo-hello-world.git test-repos/chef-solo-hello-world
-          git clone https://github.com/sous-chefs/nginx.git test-repos/nginx
-          git clone https://github.com/sous-chefs/postgresql.git test-repos/postgresql
+          git clone https://github.com/karmi/chef-solo-hello-world.git test-repos/chef-solo-hello-world || echo "Already exists"
+          git clone https://github.com/sous-chefs/nginx.git test-repos/nginx || echo "Already exists"
+          git clone https://github.com/sous-chefs/postgresql.git test-repos/postgresql || echo "Already exists"
           # Add more repositories as needed for comprehensive testing
       
       # Set up environment variables for all steps
