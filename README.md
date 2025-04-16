@@ -1,7 +1,7 @@
 # Chef to Ansible Converter
 
 <p align="center">
-  <img src="assets/a_clean__vector_styl_8000.svg" alt="Chef to Ansible Converter" width="400">
+  <img src="assets/a_professional__mode_7000.png" alt="Chef to Ansible Converter" width="600">
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
