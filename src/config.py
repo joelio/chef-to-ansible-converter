@@ -29,6 +29,11 @@ class Config:
         
         # Timeout settings
         self.api_timeout = int(os.environ.get('CHEF_TO_ANSIBLE_API_TIMEOUT', '120'))  # seconds
+        
+        # Custom resource mapping settings
+        self.resource_mapping_path = os.environ.get('CHEF_TO_ANSIBLE_RESOURCE_MAPPING', 
+                                                  os.path.join(os.path.dirname(os.path.dirname(__file__)), 
+                                                             'config', 'resource_mappings.json'))
     
     def _get_log_level(self, log_level=None):
         """Get the log level from environment variable or parameter"""

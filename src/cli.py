@@ -22,14 +22,21 @@ def main():
     parser.add_argument('--output', type=str, help='Output directory for Ansible roles')
     parser.add_argument('--validate', action='store_true', help='Validate generated roles')
     parser.add_argument('--api-key', type=str, required=True, help='Anthropic API key')
+    parser.add_argument('--resource-mapping', type=str, help='Path to custom resource mapping JSON file')
+    parser.add_argument('--log-level', type=str, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Set logging level')
     
     args = parser.parse_args()
     
     # Initialize configuration
     config = Config(
         api_key=args.api_key,
-        verbose=True
+        verbose=True,
+        log_level=args.log_level
     )
+    
+    # Set custom resource mapping path if provided
+    if args.resource_mapping:
+        config.resource_mapping_path = args.resource_mapping
     
     # Initialize components
     chef_parser = ChefParser()

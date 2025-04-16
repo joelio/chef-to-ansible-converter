@@ -1,0 +1,78 @@
+{
+  "mysql_database": {
+    "ansible_module": "community.mysql.mysql_db",
+    "property_mapping": {
+      "database_name": "name",
+      "connection": "login_host",
+      "user": "login_user",
+      "password": "login_password"
+    }
+  },
+  "postgresql_database": {
+    "ansible_module": "community.postgresql.postgresql_db",
+    "property_mapping": {
+      "database_name": "name",
+      "connection": "login_host",
+      "user": "login_user",
+      "password": "login_password"
+    }
+  },
+  "apache2_site": {
+    "ansible_module": "community.general.apache2_module",
+    "property_mapping": {
+      "site_name": "name",
+      "enable": "state",
+      "value_mapping": {
+        "enable": {"true": "present", "false": "absent"}
+      }
+    }
+  },
+  "nginx_site": {
+    "ansible_module": "community.general.nginx_site",
+    "property_mapping": {
+      "site_name": "name",
+      "enable": "state",
+      "value_mapping": {
+        "enable": {"true": "present", "false": "absent"}
+      }
+    }
+  },
+  "docker_container": {
+    "ansible_module": "community.docker.docker_container",
+    "property_mapping": {
+      "container_name": "name",
+      "image": "image",
+      "ports": "ports",
+      "volumes": "volumes",
+      "env": "env",
+      "restart_policy": "restart_policy"
+    }
+  },
+  "aws_s3_bucket": {
+    "ansible_module": "amazon.aws.s3_bucket",
+    "property_mapping": {
+      "bucket_name": "name",
+      "region": "region",
+      "acl": "acl",
+      "policy": "policy"
+    }
+  },
+  "kubernetes_deployment": {
+    "ansible_module": "kubernetes.core.k8s",
+    "property_mapping": {
+      "name": "name",
+      "namespace": "namespace",
+      "definition": "resource_definition"
+    }
+  },
+  "windows_feature": {
+    "ansible_module": "ansible.windows.win_feature",
+    "property_mapping": {
+      "feature_name": "name",
+      "action": "state",
+      "value_mapping": {
+        "action": {"install": "present", "remove": "absent"}
+      }
+    }
+  }
+}

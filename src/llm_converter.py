@@ -13,6 +13,7 @@ import yaml
 from ruamel.yaml import YAML
 
 from src.logger import logger
+from src.resource_mapping import ResourceMapping
 
 class LLMConverter:
     """Converts Chef code to Ansible using Anthropic's Claude API"""
@@ -31,6 +32,10 @@ class LLMConverter:
         
         # Load conversion examples
         self.examples = self._load_examples()
+        
+        # Initialize resource mapping
+        custom_mapping_path = getattr(config, 'resource_mapping_path', None)
+        self.resource_mapper = ResourceMapping(custom_mapping_path)
     
     def _load_examples(self):
         """
@@ -365,6 +370,23 @@ CHEF-TO-ANSIBLE RESOURCE MAPPING:
    - Chef 'cron' → ansible.builtin.cron
    - Chef 'apt_repository' → ansible.builtin.apt_repository
    - Chef 'yum_repository' → ansible.builtin.yum_repository
+   
+   CUSTOM RESOURCE HANDLING:
+   - For any Chef custom resources (resources not in the standard Chef resource set):
+     - Create a placeholder task with name: "TODO: Convert Chef custom resource '[resource_name]'"
+     - Use ansible.builtin.debug module with a message explaining the custom resource
+     - Include as much information about the resource as possible in the task vars
+     - Example:
+       ```yaml
+       - name: TODO: Convert Chef custom resource 'mysql_database'
+         ansible.builtin.debug:
+           msg: "Chef custom resource 'mysql_database' requires manual conversion"
+         vars:
+           database_name: "{{ database_name }}"
+           connection: "{{ connection }}"
+           user: "{{ user }}"
+           password: "{{ password }}"
+       ```
 
 2. For Chef 'notifies' actions:
    - Chef immediate notification (:immediately) → Ansible flush_handlers
@@ -612,7 +634,165 @@ YOU MUST FIX ALL ISSUES MENTIONED IN THE FEEDBACK ABOVE! Particularly:
         if self.config.verbose and hasattr(self.config, 'verbose'):
             logger.debug(f"Extracted {len(result['tasks'])} tasks and {len(result['handlers'])} handlers")
         
+        # Post-process the result to handle custom resources
+        result = self._post_process_custom_resources(result)
+        
         return result
+        
+    def _post_process_custom_resources(self, result):
+        """
+        Post-process the conversion result to handle custom resources
+        
+        Args:
+            result (dict): Conversion result with tasks, handlers, and variables
+            
+        Returns:
+            dict: Updated conversion result with custom resources handled
+        """
+        # Process tasks for custom resources
+        processed_tasks = []
+        custom_resource_count = 0
+        
+        for task in result['tasks']:
+            # Check if this is a placeholder for a custom resource
+            if self._is_custom_resource_placeholder(task):
+                custom_resource_count += 1
+                resource_type = self._extract_resource_type(task)
+                resource_data = self._extract_resource_data(task)
+                
+                # Try to handle the custom resource
+                custom_tasks = self._handle_custom_resource(resource_type, resource_data)
+                if custom_tasks:
+                    processed_tasks.extend(custom_tasks)
+                else:
+                    # Keep the original task if we couldn't handle it
+                    processed_tasks.append(task)
+            else:
+                processed_tasks.append(task)
+        
+        # Update the result with processed tasks
+        result['tasks'] = processed_tasks
+        
+        if custom_resource_count > 0 and self.config.verbose and hasattr(self.config, 'verbose'):
+            logger.info(f"Processed {custom_resource_count} custom resources")
+        
+        return result
+    
+    def _is_custom_resource_placeholder(self, task):
+        """
+        Check if a task is a placeholder for a custom resource
+        
+        Args:
+            task (dict): Task to check
+            
+        Returns:
+            bool: True if the task is a custom resource placeholder
+        """
+        # Check for common patterns in task names that indicate custom resources
+        name = task.get('name', '')
+        
+        patterns = [
+            r"TODO: Convert Chef custom resource '([^']+)'",
+            r"Chef custom resource '([^']+)' requires manual conversion",
+            r"Converted from Chef custom resource '([^']+)'",
+            r"Unable to convert Chef resource '([^']+)'"
+        ]
+        
+        for pattern in patterns:
+            if re.search(pattern, name):
+                return True
+        
+        # Check for debug module with custom resource message
+        if 'ansible.builtin.debug' in task and 'msg' in task['ansible.builtin.debug']:
+            msg = task['ansible.builtin.debug']['msg']
+            if 'custom resource' in msg.lower() or 'requires manual conversion' in msg.lower():
+                return True
+        
+        return False
+    
+    def _extract_resource_type(self, task):
+        """
+        Extract the resource type from a custom resource placeholder task
+        
+        Args:
+            task (dict): Custom resource placeholder task
+            
+        Returns:
+            str: Resource type or empty string if not found
+        """
+        name = task.get('name', '')
+        
+        # Try to extract from task name
+        patterns = [
+            r"TODO: Convert Chef custom resource '([^']+)'",
+            r"Chef custom resource '([^']+)' requires manual conversion",
+            r"Converted from Chef custom resource '([^']+)'",
+            r"Unable to convert Chef resource '([^']+)'"
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, name)
+            if match:
+                return match.group(1)
+        
+        # Try to extract from debug message
+        if 'ansible.builtin.debug' in task and 'msg' in task['ansible.builtin.debug']:
+            msg = task['ansible.builtin.debug']['msg']
+            for pattern in patterns:
+                match = re.search(pattern, msg)
+                if match:
+                    return match.group(1)
+        
+        # If we can't extract it, use a generic name
+        return 'custom_resource'
+    
+    def _extract_resource_data(self, task):
+        """
+        Extract resource data from a custom resource placeholder task
+        
+        Args:
+            task (dict): Custom resource placeholder task
+            
+        Returns:
+            dict: Resource data extracted from the task
+        """
+        # Start with a basic resource data structure
+        resource_data = {}
+        
+        # Look for resource data in task vars
+        if 'vars' in task:
+            resource_data.update(task['vars'])
+        
+        # Look for resource data in task parameters
+        for key, value in task.items():
+            if key not in ['name', 'ansible.builtin.debug', 'vars']:
+                resource_data[key] = value
+        
+        return resource_data
+    
+    def _handle_custom_resource(self, resource_type, resource_data):
+        """
+        Handle a custom resource using the resource mapping system
+        
+        Args:
+            resource_type (str): Type of the custom resource
+            resource_data (dict): Data for the custom resource
+            
+        Returns:
+            list: List of Ansible tasks that replace the custom resource
+        """
+        try:
+            # Try to transform the resource using our mapping system
+            return self.resource_mapper.transform_resource(resource_type, resource_data)
+        except Exception as e:
+            logger.warning(f"Error handling custom resource '{resource_type}': {str(e)}")
+            # Return a commented task as a placeholder
+            return [{
+                "name": f"TODO: Convert Chef custom resource '{resource_type}' (mapping failed: {str(e)})",
+                "ansible.builtin.debug": {
+                    "msg": f"Chef custom resource '{resource_type}' requires manual conversion"
+                }
+            }]
     
     def _extract_code_block(self, text, block_name):
         """
