@@ -27,6 +27,7 @@ help:
 	@echo "  validate           Validate generated Ansible roles"
 	@echo "  web                Start the web UI"
 	@echo "  test               Run tests on the converter"
+	@echo "  metrics            Collect metrics on conversion quality"
 	@echo "  clean              Remove temporary files and directories"
 	@echo "  help               Show this help message"
 	@echo ""
@@ -151,6 +152,22 @@ clean:
 	@echo "Cleaning up..."
 	rm -rf $(OUTPUT_PATH)/*
 	@echo "Cleanup complete!"
+
+# Run metrics collection
+.PHONY: metrics
+metrics: $(OUTPUT_PATH)
+	@echo "Running metrics collection..."
+	@echo "Output path: $(OUTPUT_PATH)"
+	@echo "Using model: $(MODEL)"
+	@echo "Log level: $(LOG_LEVEL)"
+	@if [ -z "$$ANTHROPIC_API_KEY" ]; then \
+		echo "Error: ANTHROPIC_API_KEY environment variable is required"; \
+		echo "Please set it with: export ANTHROPIC_API_KEY=your_api_key"; \
+		exit 1; \
+	fi
+	@echo "Using API key from environment variable"
+	python collect_metrics.py --output $(OUTPUT_PATH)/metrics
+	@echo "Metrics collection completed successfully!"
 
 # Default target
 .DEFAULT_GOAL := help

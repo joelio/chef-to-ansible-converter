@@ -101,10 +101,7 @@ The converter also includes a web-based user interface for easier use:
 
 ```bash
 # Start the web UI
-./start_web_ui.sh
-
-# Or manually
-python run_web_ui.py
+make web
 ```
 
 Then open your browser to http://localhost:5000
@@ -131,41 +128,27 @@ The following environment variables can be used to configure the tool:
 - `CHEF_TO_ANSIBLE_LOG_LEVEL`: Set logging level (DEBUG, INFO, WARNING, ERROR)
 - `CHEF_TO_ANSIBLE_LOG_FILE`: Path to log file (if not set, logs to console only)
 
-## Test Harnesses
+## Testing
 
-We've developed several test harnesses to validate the converter across different environments and repositories:
-
-### Docker Test Harness
-
-The `docker_test_harness_latest.sh` script creates a Docker container with all necessary dependencies and tests the converter in an isolated environment.
+To run the automated tests that validate the converter's functionality:
 
 ```bash
-./docker_test_harness_latest.sh
+# Run tests on a sample repository
+make test
 ```
 
-### RHEL 8 Test Harness
+This will clone a test Chef repository, convert it to Ansible, and validate the results.
 
-The `rhel8_test_harness.sh` script tests the converter in a Red Hat Enterprise Linux 8 environment, ensuring compatibility with enterprise systems.
+### Advanced Testing
+
+For more comprehensive testing across multiple repositories, you can use the metrics collection functionality:
 
 ```bash
-./rhel8_test_harness.sh
+# Run the metrics collection to test against multiple repositories
+make metrics
 ```
 
-### Multi-Repository Test Harness
-
-The `multi_repo_test_harness_enhanced.sh` script tests the converter against multiple Chef repositories and generates a comprehensive report.
-
-```bash
-./multi_repo_test_harness_enhanced.sh
-```
-
-### Simple Repository Test
-
-The `single_repo_test.sh` script tests the converter against a single small Chef repository, verifying that the LLM integration is working correctly.
-
-```bash
-./single_repo_test.sh
-```
+This will test the converter against several real-world Chef repositories and generate metrics on conversion quality.
 
 ## Testing Results
 
