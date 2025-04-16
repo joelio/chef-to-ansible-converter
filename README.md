@@ -49,7 +49,50 @@ python cli.py <chef-repo-path> --output <output-directory>
 python cli.py <chef-repo-path> --output <output-directory> --validate
 
 # With verbose logging
-python cli.py <chef-repo-path> --output <output-directory> --verbose
+python cli.py <chef-repo-path> --output <output-directory> --log-level DEBUG
+```
+
+### Using Makefile
+
+The project includes a Makefile that simplifies common operations, especially when using Docker:
+
+```bash
+# Show all available commands
+make help
+
+# Build the Docker image
+make build
+
+# Convert Chef cookbooks to Ansible roles
+make convert CHEF_REPO_PATH=./my-chef-repo OUTPUT_PATH=./my-ansible
+
+# Validate generated Ansible roles
+make validate OUTPUT_PATH=./my-ansible
+
+# Start the web UI
+make web
+
+# Run tests on a sample repository
+make test
+
+# Clean up temporary files and directories
+make clean
+```
+
+Environment variables can be used to configure the conversion process:
+
+```bash
+# Set the Anthropic API key
+export ANTHROPIC_API_KEY=your_api_key
+
+# Set the model to use
+export MODEL=claude-3-7-sonnet-20250219
+
+# Set the log level
+export LOG_LEVEL=DEBUG
+
+# Run conversion with the configured environment
+make convert CHEF_REPO_PATH=./my-chef-repo OUTPUT_PATH=./my-ansible
 ```
 
 ### Web UI
