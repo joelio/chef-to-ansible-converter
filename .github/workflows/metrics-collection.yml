@@ -25,6 +25,8 @@ jobs:
   collect-metrics:
     runs-on: ubuntu-latest
     environment: default
+    permissions:
+      contents: write  # This is required for GitHub Pages deployment
     
     steps:
       - name: Checkout code
