@@ -13,8 +13,8 @@ validator = AnsibleValidator(verbose=True)
 
 # Test with our sample role
 print("=== Testing Valid Role ===")
-validator.validate_role("tests/test_role")
+validator.validate("tests/test_role")
 
 # Test with invalid role
 print("\n=== Testing Invalid Role ===")
-validator.validate_role("tests/nonexistent_role")
+validator.validate("tests/nonexistent_role")
