@@ -72,7 +72,6 @@ final_commit.sh
 
 # Development files
 cloud-localds
-collect_metrics.py
 fix_reserved_variables.py
 improve_converter_final.py
 improve_converter_fixed.py
