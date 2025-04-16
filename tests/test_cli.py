@@ -61,7 +61,7 @@ class TestCLI:
                 main()
                 
                 # Verify the function calls
-                mock_config.assert_called_once_with(api_key='test_key', verbose=True)
+                mock_config.assert_called_once_with(api_key='test_key', verbose=True, log_level=None)
                 mock_parser_instance.parse_repository.assert_called_once_with('/path/to/chef')
                 mock_converter_instance.convert_cookbook.assert_called_once()
                 mock_generator_instance.generate_role.assert_called_once()
