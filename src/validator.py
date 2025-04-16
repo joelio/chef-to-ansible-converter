@@ -1,166 +1,208 @@
 """
-Validator module for the Chef to Ansible converter
+Enhanced Ansible validator with comprehensive validation strategy
 """
-
 import os
 import subprocess
+import tempfile
+import shutil
+import yaml
 from pathlib import Path
 
 class AnsibleValidator:
-    """Validates generated Ansible code"""
+    """
+    Comprehensive validator for Ansible roles with:
+    - Static analysis
+    - Dynamic testing
+    - Reporting
+    """
     
-    def __init__(self):
-        """Initialize the Ansible validator"""
-        pass
+    def __init__(self, verbose=True):
+        self.verbose = verbose
+        self.results = {
+            'errors': [],
+            'warnings': [],
+            'passed': []
+        }
     
-    def validate(self, ansible_path):
+    def validate(self, role_path):
         """Validate an Ansible role
         
-        Args:
-            ansible_path (str or Path): Path to the Ansible role
-            
-        Returns:
-            dict: Validation results
-        """
-        # Convert string path to Path object if needed
-        ansible_path = Path(ansible_path) if isinstance(ansible_path, str) else ansible_path
-        
-        results = {
-            'valid': True,
-            'messages': []
-        }
-        
-        # Check if ansible-playbook is available
-        if not self._is_ansible_available():
-            results['messages'].append("Warning: ansible-playbook not found, skipping syntax validation")
-            return results
-        
-        # Validate syntax
-        syntax_result = self.validate_syntax(ansible_path)
-        if not syntax_result['valid']:
-            results['valid'] = False
-            results['messages'].extend(syntax_result['messages'])
-        
-        # Validate with ansible-lint if available
-        lint_result = self.validate_lint(ansible_path)
-        if not lint_result['valid']:
-            # Linting failures don't make the overall validation fail
-            # but we include the messages
-            results['messages'].extend(lint_result['messages'])
-        
-        return results
-    
-    def _is_ansible_available(self):
-        """
-        Check if ansible-playbook is available
-        
-        Returns:
-            bool: True if ansible-playbook is available, False otherwise
-        """
-        try:
-            subprocess.run(['ansible-playbook', '--version'], 
-                          stdout=subprocess.PIPE, 
-                          stderr=subprocess.PIPE, 
-                          check=False)
-            return True
-        except FileNotFoundError:
-            return False
-    
-    def validate_syntax(self, ansible_path):
-        """Validate Ansible role syntax using ansible-playbook --syntax-check
+        This method is called by the converter after generating the role files.
+        It performs comprehensive validation on the generated Ansible role.
         
         Args:
-            ansible_path (str or Path): Path to the Ansible role
+            role_path (str or Path): Path to the generated Ansible role
             
         Returns:
-            dict: Validation results
+            dict: Dictionary with validation results
+                - valid (bool): True if validation passes, False otherwise
+                - messages (list): List of validation messages
         """
-        # Convert string path to Path object if needed
-        ansible_path = Path(ansible_path) if isinstance(ansible_path, str) else ansible_path
+        # Convert path to string if it's a Path object
+        if not isinstance(role_path, str):
+            role_path = str(role_path)
+            
+        # Reset results for this validation run
+        self.results = {'errors': [], 'warnings': [], 'passed': []}
         
-        results = {
-            'valid': True,
-            'messages': []
-        }
-        
-        # Create a temporary playbook to test the role
-        temp_playbook = ansible_path / 'test_playbook.yml'
-        with open(temp_playbook, 'w') as f:
-            f.write(f"""---
-- hosts: localhost
-  roles:
-    - {ansible_path.name}
-""")
-        
+        # Run all validation checks
         try:
-            # Run ansible-playbook with --syntax-check
-            process = subprocess.run(
-                ['ansible-playbook', '--syntax-check', str(temp_playbook)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False
+            # Structural validation
+            self._validate_role_structure(role_path)
+            
+            # Syntax validation
+            self._validate_syntax(role_path)
+            
+            # Linting
+            self._validate_linting(role_path)
+            
+            # Custom checks
+            self._validate_variable_naming(role_path)
+            self._validate_template_usage(role_path)
+            
+            # Dynamic testing (optional based on environment)
+            self._test_role_execution(role_path)
+        except Exception as e:
+            self.results['errors'].append(f"Validation error: {str(e)}")
+        
+        # Generate report
+        self._generate_report()
+        
+        # Return validation results
+        return {
+            'valid': len(self.results['errors']) == 0,
+            'messages': self.results['errors'] + self.results['warnings']
+        }
+    
+    def _validate_role_structure(self, role_path):
+        """Validate role directory structure"""
+        required_dirs = ['tasks', 'handlers', 'templates']
+        required_files = ['tasks/main.yml', 'meta/main.yml']
+        
+        for dir in required_dirs:
+            path = os.path.join(role_path, dir)
+            if not os.path.exists(path):
+                self.results['warnings'].append(f"Missing directory: {dir}")
+        
+        for file in required_files:
+            path = os.path.join(role_path, file)
+            if not os.path.exists(path):
+                self.results['errors'].append(f"Missing required file: {file}")
+            else:
+                self.results['passed'].append(f"Found required file: {file}")
+    
+    def _validate_syntax(self, role_path):
+        """Validate YAML syntax"""
+        try:
+            # Check all YAML files
+            for root, _, files in os.walk(role_path):
+                for file in files:
+                    if file.endswith('.yml') or file.endswith('.yaml'):
+                        path = os.path.join(root, file)
+                        with open(path, 'r') as f:
+                            yaml.safe_load(f)
+                        self.results['passed'].append(f"Valid YAML: {path}")
+        except yaml.YAMLError as e:
+            self.results['errors'].append(f"Invalid YAML in {path}: {str(e)}")
+    
+    def _validate_linting(self, role_path):
+        """Run ansible-lint"""
+        try:
+            result = subprocess.run(
+                ['ansible-lint', role_path],
+                capture_output=True,
+                text=True
             )
             
-            if process.returncode != 0:
-                results['valid'] = False
-                results['messages'].append(f"Syntax validation failed: {process.stderr}")
+            if result.returncode == 0:
+                self.results['passed'].append("ansible-lint passed")
+            else:
+                self.results['warnings'].append(
+                    f"ansible-lint issues:\n{result.stdout}"
+                )
         except Exception as e:
-            results['valid'] = False
-            results['messages'].append(f"Error during syntax validation: {str(e)}")
+            self.results['errors'].append(f"Linting failed: {str(e)}")
+    
+    def _validate_variable_naming(self, role_path):
+        """Check variable naming conventions"""
+        # Implementation would check for consistent naming
+        pass
+    
+    def _validate_template_usage(self, role_path):
+        """Verify templates are properly used"""
+        # Implementation would check template references
+        pass
+    
+    def _test_role_execution(self, role_path):
+        """Test role execution in check mode"""
+        try:
+            test_dir = tempfile.mkdtemp()
+            abs_role_path = os.path.abspath(role_path)
+            role_name = os.path.basename(abs_role_path)
+            
+            # Set up test environment
+            roles_dir = os.path.join(test_dir, 'roles')
+            os.makedirs(roles_dir)
+            
+            # Ensure the source path for symlink is absolute
+            os.symlink(
+                abs_role_path,
+                os.path.join(roles_dir, role_name)
+            )
+            
+            # Create minimal inventory
+            with open(os.path.join(test_dir, 'inventory'), 'w') as f:
+                f.write("localhost ansible_connection=local\n")
+            
+            # Create test playbook
+            playbook = {
+                'name': 'Test playbook',
+                'hosts': 'localhost',
+                'roles': [role_name] # Use the determined role name
+            }
+            
+            with open(os.path.join(test_dir, 'test.yml'), 'w') as f:
+                yaml.dump([playbook], f)
+            
+            # Run in check mode
+            result = subprocess.run(
+                ['ansible-playbook', '-i', 'inventory', '--check', 'test.yml'],
+                cwd=test_dir,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                self.results['passed'].append("Dry-run execution successful")
+            else:
+                self.results['errors'].append(
+                    f"Dry-run failed:\n{result.stderr}"
+                )
+            
+        except Exception as e:
+            self.results['errors'].append(f"Execution test failed: {str(e)}")
         finally:
-            # Clean up temporary playbook
-            if temp_playbook.exists():
-                temp_playbook.unlink()
-        
-        return results
+            shutil.rmtree(test_dir, ignore_errors=True)
     
-    def validate_lint(self, ansible_path):
-        """
-        Validate Ansible code with ansible-lint
+    def _generate_report(self):
+        """Generate validation report"""
+        print("\n=== Validation Report ===\n")
         
-        Args:
-            ansible_path (str or Path): Path to the generated Ansible role
+        if self.verbose:
+            for item in self.results['passed']:
+                print(f"✅ {item}")
             
-        Returns:
-            dict: Validation results
-        """
-        # Convert string path to Path object if needed
-        ansible_path = Path(ansible_path) if isinstance(ansible_path, str) else ansible_path
-        results = {
-            'valid': True,
-            'messages': []
-        }
-        
-        # Check if ansible-lint is available
-        try:
-            subprocess.run(['ansible-lint', '--version'], 
-                          stdout=subprocess.PIPE, 
-                          stderr=subprocess.PIPE, 
-                          check=False)
-        except FileNotFoundError:
-            results['messages'].append("Warning: ansible-lint not found, skipping linting")
-            return results
-        
-        try:
-            # Run ansible-lint
-            process = subprocess.run(
-                ['ansible-lint', str(ansible_path)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False
-            )
+            for item in self.results['warnings']:
+                print(f"⚠️  {item}")
             
-            if process.returncode != 0:
-                results['valid'] = False
-                # Parse lint output and add to messages
-                lint_output = process.stdout or process.stderr
-                for line in lint_output.splitlines():
-                    if line.strip():
-                        results['messages'].append(f"Lint: {line.strip()}")
-        except Exception as e:
-            results['valid'] = False
-            results['messages'].append(f"Error during linting: {str(e)}")
+            for item in self.results['errors']:
+                print(f"❌ {item}")
         
-        return results
+        print(f"\nSummary: {len(self.results['passed'])} passed, "
+              f"{len(self.results['warnings'])} warnings, "
+              f"{len(self.results['errors'])} errors")
+        
+        if self.results['errors']:
+            print("\nValidation FAILED")
+        else:
+            print("\nValidation PASSED")

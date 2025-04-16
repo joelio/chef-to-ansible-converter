@@ -1,0 +1,300 @@
+name: Metrics Collection and Visualization
+
+on:
+  # Run on schedule (weekly)
+  schedule:
+    - cron: '0 0 * * 0'  # Run every Sunday at midnight
+  
+  # Run on manual trigger
+  workflow_dispatch:
+    inputs:
+      test_all_repos:
+        description: 'Test all repositories'
+        required: false
+        default: false
+        type: boolean
+
+  # Run on pull requests that modify the conversion or prompt
+  pull_request:
+    paths:
+      - 'src/llm_converter.py'
+      - 'src/**/*.py'
+      - '.github/workflows/metrics-collection.yml'
+
+jobs:
+  collect-metrics:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for accurate comparisons
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install matplotlib pandas numpy ruamel.yaml
+      
+      # Create a directory for the metrics
+      - name: Create metrics directory
+        run: mkdir -p metrics
+      
+      # Clone test repositories - expand this list as needed
+      - name: Clone test repositories
+        run: |
+          mkdir -p test-repos
+          git clone https://github.com/karmi/chef-solo-hello-world.git test-repos/chef-solo-hello-world
+          git clone https://github.com/sous-chefs/nginx.git test-repos/nginx
+          git clone https://github.com/sous-chefs/postgresql.git test-repos/postgresql
+          # Add more repositories as needed for comprehensive testing
+      
+      # Set up environment variables for all steps
+      - name: Check for required secrets
+        id: check_secrets
+        shell: bash
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret is not set. Please add it to your repository secrets."
+            exit 1
+          else
+            echo "API key is available"
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      
+      # Run conversion and collect metrics for each repository
+      - name: Convert and collect metrics - Simple Cookbook
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Record the start time
+          start_time=$(date +%s)
+          
+          # Use a simple cookbook for basic testing
+          python chef_to_ansible.py convert --repo-url ./test-repos/chef-solo-hello-world --output-dir ansible_roles_hello_world --verbose
+          
+          # Record the end time and calculate duration
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          
+          # Collect metrics
+          python collect_metrics.py --output-dir ansible_roles_hello_world --cookbook-name chef-solo-hello-world --execution-time $duration
+      
+      # Run conversion for nginx (medium complexity)
+      - name: Convert and collect metrics - Medium Complexity
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Record the start time
+          start_time=$(date +%s)
+          
+          # Use a medium complexity cookbook
+          python chef_to_ansible.py convert --repo-url ./test-repos/nginx --output-dir ansible_roles_nginx --verbose
+          
+          # Record the end time and calculate duration
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          
+          # Collect metrics
+          python collect_metrics.py --output-dir ansible_roles_nginx --cookbook-name nginx --execution-time $duration
+      
+      # Run conversion for postgresql (high complexity)
+      - name: Convert and collect metrics - High Complexity
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Record the start time
+          start_time=$(date +%s)
+          
+          # Use a high complexity cookbook
+          python chef_to_ansible.py convert --repo-url ./test-repos/postgresql --output-dir ansible_roles_postgresql --verbose
+          
+          # Record the end time and calculate duration
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          
+          # Collect metrics
+          python collect_metrics.py --output-dir ansible_roles_postgresql --cookbook-name postgresql --execution-time $duration
+      
+      # Generate charts and visualizations
+      - name: Generate metrics charts
+        run: |
+          # Create a Python script to generate charts
+          cat > generate_charts.py << 'EOL'
+          #!/usr/bin/env python3
+          """
+          Generate charts from metrics data
+          """
+          
+          import os
+          import json
+          import glob
+          import pandas as pd
+          import numpy as np
+          import matplotlib.pyplot as plt
+          from datetime import datetime
+          import matplotlib.dates as mdates
+          
+          # Set the style for the charts
+          plt.style.use('ggplot')
+          
+          # Load all metrics files
+          metrics_files = sorted(glob.glob('metrics/metrics_*.json'))
+          
+          if not metrics_files:
+              print("No metrics files found!")
+              exit(1)
+          
+          # Create a directory for charts
+          os.makedirs('charts', exist_ok=True)
+          
+          # Prepare data structures for the charts
+          dates = []
+          fqcn_compliance = []
+          capitalization_compliance = []
+          boolean_compliance = []
+          variable_compliance = []
+          
+          # Process each metrics file
+          for metrics_file in metrics_files:
+              with open(metrics_file, 'r') as f:
+                  data = json.load(f)
+              
+              # Extract the timestamp and convert to a datetime object
+              timestamp = datetime.fromisoformat(data['timestamp'])
+              dates.append(timestamp)
+              
+              # Calculate average metrics across all runs in this file
+              total_tasks = 0
+              total_fqcn = 0
+              total_capitalization = 0
+              total_boolean = 0
+              total_variable = 0
+              
+              for run in data['runs']:
+                  for role in run['roles']:
+                      if role['task_count'] > 0:
+                          total_tasks += role['task_count']
+                          total_fqcn += role['fqcn_compliance'] * role['task_count']
+                          total_capitalization += role['capitalization_compliance'] * role['task_count']
+                          total_boolean += role['boolean_compliance'] * role['task_count']
+                          total_variable += role['variable_definition_compliance'] * role['task_count']
+              
+              if total_tasks > 0:
+                  fqcn_compliance.append(total_fqcn / total_tasks)
+                  capitalization_compliance.append(total_capitalization / total_tasks)
+                  boolean_compliance.append(total_boolean / total_tasks)
+                  variable_compliance.append(total_variable / total_tasks)
+              else:
+                  fqcn_compliance.append(0)
+                  capitalization_compliance.append(0)
+                  boolean_compliance.append(0)
+                  variable_compliance.append(0)
+          
+          # Create a DataFrame for easier plotting
+          df = pd.DataFrame({
+              'Date': dates,
+              'FQCN Compliance (%)': fqcn_compliance,
+              'Task Name Capitalization (%)': capitalization_compliance,
+              'Boolean Values (true/false) (%)': boolean_compliance,
+              'Variable Definition (%)': variable_compliance
+          })
+          
+          # Generate a line chart for compliance metrics over time
+          plt.figure(figsize=(12, 8))
+          plt.plot(df['Date'], df['FQCN Compliance (%)'], marker='o', label='FQCN Compliance')
+          plt.plot(df['Date'], df['Task Name Capitalization (%)'], marker='s', label='Task Name Capitalization')
+          plt.plot(df['Date'], df['Boolean Values (true/false) (%)'], marker='^', label='Boolean Values (true/false)')
+          plt.plot(df['Date'], df['Variable Definition (%)'], marker='d', label='Variable Definition')
+          
+          plt.xlabel('Date')
+          plt.ylabel('Compliance (%)')
+          plt.title('Ansible Role Quality Metrics Over Time')
+          plt.legend()
+          plt.grid(True)
+          
+          # Format the x-axis to show dates nicely
+          plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+          plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
+          plt.gcf().autofmt_xdate()
+          
+          # Set the y-axis limits to 0-100%
+          plt.ylim(0, 100)
+          
+          # Save the chart
+          plt.savefig('charts/compliance_over_time.png', dpi=300, bbox_inches='tight')
+          
+          # Generate a bar chart for the latest metrics
+          latest_metrics = df.iloc[-1].drop('Date')
+          
+          plt.figure(figsize=(12, 8))
+          ax = latest_metrics.plot(kind='bar', color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'])
+          plt.title('Latest Ansible Role Quality Metrics')
+          plt.ylabel('Compliance (%)')
+          plt.xlabel('Metric')
+          plt.ylim(0, 100)
+          
+          # Add value labels on top of each bar
+          for i, v in enumerate(latest_metrics):
+              ax.text(i, v + 2, f"{v:.1f}%", ha='center')
+          
+          plt.tight_layout()
+          plt.savefig('charts/latest_metrics.png', dpi=300, bbox_inches='tight')
+          
+          # Generate a summary markdown file
+          with open('charts/metrics_summary.md', 'w') as f:
+              f.write('# Chef to Ansible Conversion Metrics\n\n')
+              f.write(f'Last updated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n\n')
+              
+              f.write('## Latest Compliance Metrics\n\n')
+              f.write('| Metric | Value |\n')
+              f.write('|--------|-------|\n')
+              for metric, value in latest_metrics.items():
+                  f.write(f'| {metric} | {value:.2f}% |\n')
+              
+              f.write('\n## Compliance Metrics Over Time\n\n')
+              f.write('![Compliance Metrics Over Time](compliance_over_time.png)\n\n')
+              
+              f.write('## Latest Metrics\n\n')
+              f.write('![Latest Metrics](latest_metrics.png)\n')
+          
+          print("Charts generated successfully!")
+          EOL
+          
+          # Make the script executable
+          chmod +x generate_charts.py
+          
+          # Run the script to generate charts
+          python generate_charts.py
+      
+      # Upload metrics data as artifact
+      - name: Upload metrics data
+        uses: actions/upload-artifact@v3
+        with:
+          name: metrics-data
+          path: metrics/
+      
+      # Upload generated charts as artifact
+      - name: Upload charts
+        uses: actions/upload-artifact@v3
+        with:
+          name: metrics-charts
+          path: charts/
+      
+      # Deploy metrics and charts to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'  # Only deploy from main branch
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./charts
+          destination_dir: metrics  # Will be published at /metrics path
+          enable_jekyll: true
+          commit_message: 'Update metrics (automated)'

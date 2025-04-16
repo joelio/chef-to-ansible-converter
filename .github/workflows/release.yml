@@ -1,0 +1,70 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+    
+    - name: Build package
+      run: |
+        python -m build
+    
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Chef to Ansible Converter ${{ env.VERSION }}
+          
+          ### What's Changed
+          
+          *Automatically generated release notes will appear here when configured*
+          
+          ### Installation
+          
+          ```bash
+          pip install chef-to-ansible-converter==${{ env.VERSION }}
+          ```
+          
+          ### Documentation
+          
+          For full documentation, visit the [wiki](https://github.com/${{ github.repository }}/wiki).
+    
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/chef_to_ansible_converter-${{ env.VERSION }}.tar.gz
+        asset_name: chef_to_ansible_converter-${{ env.VERSION }}.tar.gz
+        asset_content_type: application/gzip

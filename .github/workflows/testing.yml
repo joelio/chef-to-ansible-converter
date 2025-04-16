@@ -1,0 +1,64 @@
+name: Testing
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - '.github/workflows/testing.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - '.github/workflows/testing.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10']
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Setup test repositories
+      run: |
+        mkdir -p test-repos
+        git clone https://github.com/chef-solo-hello-world/chef-solo-hello-world.git test-repos/chef-solo-hello-world || echo "Already exists"
+    
+    - name: Run unit tests
+      run: |
+        pytest --cov=src tests/
+    
+    - name: Run integration tests for basic conversion
+      if: ${{ !env.ACT }}  # Skip this step when running locally with act
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      run: |
+        if [ -n "$ANTHROPIC_API_KEY" ]; then
+          python chef_to_ansible.py convert --repo-url ./test-repos/chef-solo-hello-world --output-dir integration_test_output --verbose
+          [ -f integration_test_output/chef-solo-hello-world/tasks/main.yml ] || exit 1
+          echo "✅ Basic conversion test passed"
+        else
+          echo "⚠️ Skipping integration test because ANTHROPIC_API_KEY is not set"
+          echo "   Set up the secret in your repository settings to enable integration tests"
+        fi
