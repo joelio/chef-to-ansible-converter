@@ -61,18 +61,18 @@ jobs:
         shell: bash
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::error::ANTHROPIC_API_KEY secret is not set. Please add it to your repository secrets."
+            echo "::error::ANTHROPIC_API_KEY environment variable is not set. Please add it to your repository environment variables."
             exit 1
           else
             echo "API key is available"
           fi
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ vars.ANTHROPIC_API_KEY }}
       
       # Run conversion and collect metrics for each repository
       - name: Convert and collect metrics - Simple Cookbook
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ vars.ANTHROPIC_API_KEY }}
         run: |
           # Record the start time
           start_time=$(date +%s)
@@ -90,7 +90,7 @@ jobs:
       # Run conversion for nginx (medium complexity)
       - name: Convert and collect metrics - Medium Complexity
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ vars.ANTHROPIC_API_KEY }}
         run: |
           # Record the start time
           start_time=$(date +%s)
@@ -108,7 +108,7 @@ jobs:
       # Run conversion for postgresql (high complexity)
       - name: Convert and collect metrics - High Complexity
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ vars.ANTHROPIC_API_KEY }}
         run: |
           # Record the start time
           start_time=$(date +%s)
