@@ -5,7 +5,7 @@
 </p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Test Coverage](https://img.shields.io/badge/coverage-68%25-yellow.svg)](https://github.com/joelio/chef-to-ansible-converter/actions)
+[![Test Coverage](https://img.shields.io/badge/coverage-77%25-yellow.svg)](https://github.com/joelio/chef-to-ansible-converter/actions)
 
 A Python-based tool that leverages Anthropic's Claude API to automatically convert Chef cookbooks to Ansible playbooks and roles, following Ansible best practices.
 
