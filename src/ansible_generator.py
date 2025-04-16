@@ -32,21 +32,32 @@ class AnsibleGenerator:
         role_path = Path(output_path) if isinstance(output_path, str) else output_path
         role_path.mkdir(parents=True, exist_ok=True)
         
+        # Get the cookbook name or use a default value if not present
+        cookbook_name = ansible_data.get('name', os.path.basename(str(output_path)))
+        role_name = cookbook_name.replace('-', '_').lower()
+        
         # Create directories
         for dir_name in ['tasks', 'handlers', 'templates', 'files', 'vars', 'defaults', 'meta']:
             (role_path / dir_name).mkdir(exist_ok=True)
         
         # Write tasks
         if ansible_data['tasks']:
-            self._write_yaml_file(role_path / 'tasks' / 'main.yml', ansible_data['tasks'])
+            # Add tags to tasks if they don't have them
+            tasks = self._add_tags_to_tasks(ansible_data['tasks'], role_name)
+            self._write_yaml_file(role_path / 'tasks' / 'main.yml', tasks)
         
         # Write handlers
         if ansible_data['handlers']:
-            self._write_yaml_file(role_path / 'handlers' / 'main.yml', ansible_data['handlers'])
+            # Enhance handlers with better error handling
+            handlers = self._enhance_handlers(ansible_data['handlers'])
+            self._write_yaml_file(role_path / 'handlers' / 'main.yml', handlers)
         
-        # Write variables
+        # Separate variables between defaults and vars
         if ansible_data['variables']:
-            self._write_yaml_file(role_path / 'defaults' / 'main.yml', ansible_data['variables'])
+            defaults, vars_data = self._separate_variables(ansible_data['variables'])
+            self._write_yaml_file(role_path / 'defaults' / 'main.yml', defaults)
+            if vars_data:
+                self._write_yaml_file(role_path / 'vars' / 'main.yml', vars_data)
         
         # Write templates
         if 'templates' in ansible_data and ansible_data['templates']:
@@ -92,8 +103,6 @@ class AnsibleGenerator:
                 file_path.touch()
         
         # Create meta/main.yml with role metadata
-        # Get the cookbook name or use a default value if not present
-        cookbook_name = ansible_data.get('name', os.path.basename(output_path))
         meta = {
             'galaxy_info': {
                 'author': 'Chef to Ansible Converter',
@@ -104,42 +113,79 @@ class AnsibleGenerator:
                 'platforms': [
                     {
                         'name': 'EL',
-                        'versions': ['7', '8']
+                        'versions': ['7', '8', '9']
                     },
                     {
                         'name': 'Ubuntu',
-                        'versions': ['bionic', 'focal']
+                        'versions': ['bionic', 'focal', 'jammy']
+                    },
+                    {
+                        'name': 'Debian',
+                        'versions': ['buster', 'bullseye']
                     }
                 ],
-                'galaxy_tags': ['generated', 'chef']
+                'galaxy_tags': ['generated', 'chef', role_name]
             },
             'dependencies': []
         }
         self._write_yaml_file(role_path / 'meta' / 'main.yml', meta)
         
-        # Create README.md
+        # Create a site.yml master playbook
+        self._create_master_playbook(role_path.parent, role_name)
+        
+        # Create README.md with more comprehensive documentation
         readme_content = f"""# {cookbook_name}
 
 Ansible role converted from Chef cookbook {cookbook_name}.
 
 ## Requirements
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here.
+- Ansible 2.9 or higher
+- Python 3.6 or higher on the control node
 
 ## Role Variables
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role.
+### Default Variables
+
+These variables are defined in `defaults/main.yml` and can be overridden by the user:
+
+```yaml
+# Include a sample of the most important variables here
+```
+
+### Internal Variables
+
+These variables are defined in `vars/main.yml` and are used internally by the role:
+
+```yaml
+# Include a sample of internal variables here
+```
 
 ## Dependencies
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+None.
 
 ## Example Playbook
 
 ```yaml
 - hosts: servers
+  vars:
+    # Example variable overrides
+    {role_name}_custom_var: custom_value
   roles:
-     - role_name
+    - {role_name}
+```
+
+## Usage with Tags
+
+This role uses tags to allow running specific parts of the configuration:
+
+```bash
+# Run only tasks tagged with 'config'
+ansible-playbook -i inventory site.yml --tags {role_name},config
+
+# Skip tasks tagged with 'service'
+ansible-playbook -i inventory site.yml --skip-tags service
 ```
 
 ## License
@@ -149,6 +195,10 @@ MIT
 ## Author Information
 
 This role was converted from a Chef cookbook by the Chef to Ansible Converter.
+
+## Conversion Notes
+
+This role was automatically generated from a Chef cookbook. Some manual adjustments may be needed for optimal performance.
 """
         with open(role_path / 'README.md', 'w') as f:
             f.write(readme_content)
@@ -163,3 +213,206 @@ This role was converted from a Chef cookbook by the Chef to Ansible Converter.
         """
         with open(file_path, 'w') as f:
             self.yaml.dump(data, f)
+    
+    def _add_tags_to_tasks(self, tasks, role_name):
+        """
+        Add appropriate tags to tasks for better organization
+        
+        Args:
+            tasks (list): List of tasks
+            role_name (str): Name of the role
+            
+        Returns:
+            list: Tasks with added tags
+        """
+        enhanced_tasks = []
+        
+        for task in tasks:
+            # Skip if not a dict (shouldn't happen, but just in case)
+            if not isinstance(task, dict):
+                enhanced_tasks.append(task)
+                continue
+                
+            # Copy the task to avoid modifying the original
+            enhanced_task = task.copy()
+            
+            # Skip if already has tags
+            if 'tags' in enhanced_task:
+                enhanced_tasks.append(enhanced_task)
+                continue
+                
+            # Determine appropriate tags based on task content
+            tags = [role_name]  # Always include role name as a tag
+            
+            # Add module-specific tags
+            for key in enhanced_task.keys():
+                if key == 'name':
+                    continue
+                    
+                if 'package' in key or 'apt' in key or 'yum' in key:
+                    tags.append('packages')
+                elif 'service' in key:
+                    tags.append('service')
+                elif 'template' in key or 'copy' in key or 'file' in key:
+                    tags.append('config')
+                elif 'user' in key or 'group' in key:
+                    tags.append('users')
+                elif 'command' in key or 'shell' in key:
+                    tags.append('commands')
+            
+            # Add tags to task
+            enhanced_task['tags'] = tags
+            enhanced_tasks.append(enhanced_task)
+            
+        return enhanced_tasks
+    
+    def _enhance_handlers(self, handlers):
+        """
+        Enhance handlers with better error handling
+        
+        Args:
+            handlers (list): List of handlers
+            
+        Returns:
+            list: Enhanced handlers
+        """
+        enhanced_handlers = []
+        
+        for handler in handlers:
+            # Skip if not a dict (shouldn't happen, but just in case)
+            if not isinstance(handler, dict):
+                enhanced_handlers.append(handler)
+                continue
+                
+            # Copy the handler to avoid modifying the original
+            enhanced_handler = handler.copy()
+            
+            # Add error handling for service handlers
+            # Get a list of keys first to avoid modifying during iteration
+            handler_keys = list(enhanced_handler.keys())
+            for key in handler_keys:
+                if key == 'name':
+                    continue
+                    
+                if 'service' in key and 'ignore_errors' not in enhanced_handler:
+                    # Add ignore_errors and register variables for better error handling
+                    enhanced_handler['ignore_errors'] = True
+                    enhanced_handler['register'] = f"{key.split('.')[-1]}_result"
+                    enhanced_handler['failed_when'] = [
+                        f"{enhanced_handler['register']} is failed",
+                        f"'Could not find the requested service' not in {enhanced_handler['register']}.msg"
+                    ]
+            
+            enhanced_handlers.append(enhanced_handler)
+            
+        return enhanced_handlers
+    
+    def _separate_variables(self, variables):
+        """
+        Separate variables between defaults and vars
+        
+        Args:
+            variables (dict): All variables
+            
+        Returns:
+            tuple: (defaults, vars)
+        """
+        defaults = {}
+        vars_data = {}
+        
+        for key, value in variables.items():
+            # Internal variables (not meant to be overridden) go to vars
+            if key.startswith('_') or key.endswith('_internal'):
+                vars_data[key] = value
+            # System-related variables go to vars
+            elif any(system_var in key for system_var in ['ansible_', 'inventory_', 'hostvars']):
+                vars_data[key] = value
+            # Everything else goes to defaults
+            else:
+                defaults[key] = value
+        
+        return defaults, vars_data
+    
+    def _create_master_playbook(self, project_path, role_name):
+        """
+        Create a site.yml master playbook
+        
+        Args:
+            project_path (Path): Path to the project directory
+            role_name (str): Name of the role
+        """
+        site_yml = [
+            {
+                'name': f'Deploy {role_name}',
+                'hosts': 'all',
+                'become': True,
+                'roles': [
+                    {'role': role_name}
+                ]
+            }
+        ]
+        
+        # Write site.yml
+        self._write_yaml_file(project_path / 'site.yml', site_yml)
+        
+        # Create a sample inventory file
+        inventory_dir = project_path / 'inventory'
+        inventory_dir.mkdir(exist_ok=True)
+        
+        # Create inventory/hosts file
+        hosts_content = """[all]
+localhost ansible_connection=local
+
+[production]
+# prod-server1.example.com
+# prod-server2.example.com
+
+[staging]
+# staging-server.example.com
+
+[development]
+localhost ansible_connection=local
+"""
+        
+        with open(inventory_dir / 'hosts', 'w') as f:
+            f.write(hosts_content)
+            
+        # Create a .gitignore file
+        gitignore_content = """# Ansible
+*.retry
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+"""
+        
+        with open(project_path / '.gitignore', 'w') as f:
+            f.write(gitignore_content)
