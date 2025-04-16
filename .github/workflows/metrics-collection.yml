@@ -24,6 +24,7 @@ on:
 jobs:
   collect-metrics:
     runs-on: ubuntu-latest
+    environment: default
     
     steps:
       - name: Checkout code
