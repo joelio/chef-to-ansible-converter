@@ -1,11 +1,221 @@
-# Chef to Ansible Converter
-
 <p align="center">
-  <img src="assets/a_professional__mode_7000.png" alt="Chef to Ansible Converter" width="600">
+  <img src="docs/logo.svg" alt="Chef to Ansible Converter" width="600">
 </p>
 
+# Chef to Ansible Converter
+
+## Workflow Diagrams
+
+### High-Level Conversion Pipeline
+
+```mermaid
+flowchart LR
+    subgraph "Input" [Chef Input]
+        A[Chef Repository] --> B[Chef Cookbooks]
+        B --> B1[Recipes]
+        B --> B2[Templates]
+        B --> B3[Attributes]
+        B --> B4[Libraries]
+    end
+    
+    subgraph "Parsing" [Chef Parser]
+        C[chef_parser.py] --> C1[Extract Resources]
+        C --> C2[Parse Templates]
+        C --> C3[Extract Attributes]
+        C --> C4[Identify Custom Resources]
+    end
+    
+    subgraph "Conversion" [LLM Conversion]
+        D[llm_converter.py] --> D1[Claude API]
+        D1 --> D2[Prompt Engineering]
+        D2 --> D3[Ansible Code Generation]
+        D --> D4[Custom Resource Handling]
+    end
+    
+    subgraph "Mapping" [Resource Mapping]
+        G[resource_mapping.py] --> G1[Standard Resources]
+        G --> G2[Custom Resources]
+        G --> G3[Complex Patterns]
+    end
+    
+    subgraph "Generation" [Ansible Generator]
+        L[ansible_generator.py] --> L1[Role Structure]
+        L --> L2[Tasks]
+        L --> L3[Handlers]
+        L --> L4[Templates]
+        L --> L5[Variables]
+        L --> L6[Meta]
+    end
+    
+    subgraph "Validation" [Validator]
+        N[validator.py] --> N1[Syntax Check]
+        N --> N2[ansible-lint]
+        N --> N3[Test Execution]
+        N --> N4[Feedback Generation]
+    end
+    
+    B ==> C
+    C ==> D
+    C ==> G
+    D ==> L
+    G ==> L
+    L ==> N
+    N -->|Pass| O[Final Ansible Roles]
+    N -->|Fail| P[Feedback Loop] --> D
+    
+    classDef chef fill:#e34c26,stroke:#333,stroke-width:1px,color:white
+    classDef ansible fill:#1A6DB1,stroke:#333,stroke-width:1px,color:white
+    classDef process fill:#4CAF50,stroke:#333,stroke-width:1px,color:white
+    classDef validator fill:#FF9800,stroke:#333,stroke-width:1px,color:white
+    classDef subgraph fill:#f5f5f5,stroke:#666,stroke-width:2px
+    
+    class A,B,B1,B2,B3,B4 chef
+    class L1,L2,L3,L4,L5,L6,O ansible
+    class C,C1,C2,C3,C4,D,D1,D2,D3,D4,G,G1,G2,G3 process
+    class N,N1,N2,N3,N4,P validator
+```
+
+### Data Flow Between Components
+
+```mermaid
+flowchart TD
+    subgraph "Input"
+        A1[Chef Cookbook] --> A2[Ruby Code]
+        A1 --> A3[ERB Templates]
+        A1 --> A4[Attributes]
+    end
+
+    subgraph "Chef Parser"
+        B1[Parse Recipes] --> B2[Resource Extraction]
+        B1 --> B3[Control Flow Analysis]
+    end
+
+    subgraph "LLM Converter"
+        C1[Build Prompt] --> C2[API Call]
+        C2 --> C3[Response Processing]
+        C3 --> C4[YAML Extraction]
+    end
+
+    subgraph "Resource Mapping"
+        D1[Identify Resource Type] --> D2[Look Up Mapping]
+        D2 --> D3[Apply Transformation]
+    end
+
+    subgraph "Ansible Generator"
+        E1[Create Role Structure] --> E2[Write Tasks]
+        E1 --> E3[Write Handlers]
+        E1 --> E4[Process Templates]
+        E1 --> E5[Write Variables]
+        E1 --> E6[Generate Metadata]
+    end
+
+    subgraph "Validator"
+        F1[Syntax Check] --> F2[Linting]
+        F2 --> F3[Test Execution]
+    end
+
+    A2 --> B1
+    A3 --> B1
+    A4 --> B1
+
+    B2 --> C1
+    B3 --> C1
+
+    C4 --> D1
+    C4 --> E1
+
+    D3 --> E2
+
+    E2 --> F1
+    E3 --> F1
+    E4 --> F1
+    E5 --> F1
+
+    F3 -->|Issues Found| G1[Feedback]
+    F3 -->|Success| G2[Final Roles]
+
+    G1 --> C1
+
+    classDef input fill:#f9d6d6,stroke:#333,stroke-width:1px
+    classDef parser fill:#d6e5f9,stroke:#333,stroke-width:1px
+    classDef llm fill:#d6f9e0,stroke:#333,stroke-width:1px
+    classDef mapper fill:#f9f2d6,stroke:#333,stroke-width:1px
+    classDef generator fill:#e0d6f9,stroke:#333,stroke-width:1px
+    classDef validator fill:#f9d9e0,stroke:#333,stroke-width:1px
+    classDef output fill:#d6f9f2,stroke:#333,stroke-width:1px
+
+    class A1,A2,A3,A4 input
+    class B1,B2,B3 parser
+    class C1,C2,C3,C4 llm
+    class D1,D2,D3 mapper
+    class E1,E2,E3,E4,E5,E6 generator
+    class F1,F2,F3 validator
+    class G1,G2 output
+```
+
+### Chef to Ansible Conversion Process
+
+The diagrams above illustrate the complete workflow for converting Chef cookbooks to Ansible roles, following Ansible best practices as outlined in the project requirements.
+
+### LLM Prompt Engineering Approach
+
+```mermaid
+flowchart TD
+    subgraph "Prompt Construction"
+        A1[Chef Recipe Input] --> A2[Extract Core Logic]
+        A2 --> A3[Identify Chef Patterns]
+        A3 --> A4[Build Structured Prompt]
+    end
+
+    subgraph "Best Practices Guidance"
+        B1[Fully Qualified Module Names] 
+        B2[Descriptive Task Names]
+        B3[Explicit State Parameters]
+        B4[Boolean Values: true/false]
+        B5[Variable Naming Conventions]
+        B6[Task Grouping with Blocks]
+        B7[Error Handling]
+        B8[Tagging for Tasks]
+        B9[Idempotent Operations]
+    end
+
+    subgraph "Response Processing"
+        C1[Parse LLM Response] --> C2[Extract YAML Blocks]
+        C2 --> C3[Validate Syntax]
+        C3 --> C4[Post-Process Resources]
+    end
+
+    A4 --> D1[Claude API Call]
+    B1 --> D1
+    B2 --> D1
+    B3 --> D1
+    B4 --> D1
+    B5 --> D1
+    B6 --> D1
+    B7 --> D1
+    B8 --> D1
+    B9 --> D1
+
+    D1 --> C1
+    C4 --> D2[Structured Ansible Code]
+
+    classDef prompt fill:#d6e5f9,stroke:#333,stroke-width:1px
+    classDef practices fill:#d6f9e0,stroke:#333,stroke-width:1px
+    classDef process fill:#f9f2d6,stroke:#333,stroke-width:1px
+    classDef api fill:#e0d6f9,stroke:#333,stroke-width:1px
+    classDef output fill:#f9d6d6,stroke:#333,stroke-width:1px
+
+    class A1,A2,A3,A4 prompt
+    class B1,B2,B3,B4,B5,B6,B7,B8,B9 practices
+    class C1,C2,C3,C4 process
+    class D1 api
+    class D2 output
+```
+
+This diagram illustrates how the LLM prompt engineering approach incorporates Ansible best practices to ensure high-quality conversion results:
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Test Coverage](https://img.shields.io/badge/coverage-77%25-yellow.svg)](https://github.com/joelio/chef-to-ansible-converter/actions)
+[![Test Coverage](https://img.shields.io/badge/coverage-84%25-green.svg)](https://github.com/joelio/chef-to-ansible-converter/actions)
 
 A Python-based tool that leverages Anthropic's Claude API to automatically convert Chef cookbooks to Ansible playbooks and roles, following Ansible best practices.
 
@@ -150,18 +360,64 @@ Then open your browser to http://localhost:5000
 
 ## Architecture
 
-The tool consists of several components:
+The Chef to Ansible Converter follows a pipeline architecture that transforms Chef cookbooks into Ansible roles through several specialized components:
 
-1. **Repository Handler** (`repo_handler.py`): Manages Git operations to clone and process Chef repositories
-2. **Chef Parser** (`chef_parser.py`): Extracts and understands Chef cookbook structures and recipes
-3. **LLM Conversion Engine** (`llm_converter.py`): Core component that transforms Chef code to Ansible using Claude
-4. **Resource Mapping** (`resource_mapping.py`): Maps Chef custom resources to Ansible modules
-5. **Ansible Generator** (`ansible_generator.py`): Creates properly formatted Ansible playbooks and roles
-6. **Validation Engine** (`validator.py`): Ensures generated Ansible code is syntactically correct
-7. **Logger** (`logger.py`): Provides structured logging throughout the application
-8. **Configuration** (`config.py`): Manages application settings and API credentials
-9. **CLI Interface** (`cli.py`): Command-line interface for the converter
-10. **Web UI** (`web/app.py`): Optional web interface for easier use
+### Conversion Workflow
+
+1. **Chef Input & Repository Handler** (`repo_handler.py`):
+   - Clones Chef repositories or processes local cookbook directories
+   - Organizes cookbook files for parsing
+   - Handles Git operations and temporary file management
+
+2. **Chef Parser** (`chef_parser.py`):
+   - Extracts resources, templates, attributes, and libraries from Chef code
+   - Identifies recipe structures, dependencies, and cookbook metadata
+   - Parses Ruby code to understand Chef-specific patterns and constructs
+   - Organizes parsed data into structured format for conversion
+
+3. **LLM Conversion Engine** (`llm_converter.py`):
+   - Core component that transforms Chef code to Ansible using Claude API
+   - Applies prompt engineering with Ansible best practices guidance
+   - Handles context management for large cookbooks
+   - Processes Chef-specific patterns and translates them to Ansible equivalents
+   - Implements retry logic and error handling for API interactions
+
+4. **Resource Mapping** (`resource_mapping.py`):
+   - Maps Chef custom resources to Ansible modules
+   - Handles Chef-specific resources that don't have direct Ansible equivalents
+   - Provides extensible mapping system for organization-specific resources
+   - Transforms complex Chef resources into equivalent Ansible task sequences
+
+5. **Ansible Generator** (`ansible_generator.py`):
+   - Creates properly structured Ansible roles following best practices
+   - Generates tasks, handlers, templates, variables, and metadata
+   - Organizes converted code into proper Ansible directory structure
+   - Implements Ansible-specific optimizations and patterns
+   - Ensures generated code follows Ansible conventions
+
+6. **Validation Engine** (`validator.py`):
+   - Ensures generated Ansible code is syntactically correct
+   - Runs ansible-lint to check for best practices and potential issues
+   - Performs test execution in isolated environments
+   - Generates validation reports with improvement suggestions
+
+7. **Supporting Components**:
+   - **Logger** (`logger.py`): Provides structured logging throughout the application
+   - **Configuration** (`config.py`): Manages application settings and API credentials
+   - **CLI Interface** (`cli.py`): Command-line interface for the converter
+   - **Web UI** (`web/app.py`): Optional web interface for easier use
+
+### Data Flow
+
+The conversion process follows this data flow:
+
+1. Chef cookbooks are parsed into structured data representations
+2. Structured data is transformed into prompts for the LLM
+3. LLM generates Ansible code based on the Chef input
+4. Custom resources are processed through the mapping system
+5. Ansible code is organized into proper role structure
+6. Generated roles are validated and tested
+7. Final output is delivered as Ansible roles and playbooks
 
 ## Environment Variables
 
