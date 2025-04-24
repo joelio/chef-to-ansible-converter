@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="300" height="300" fill="none" />
+  
+  <!-- Abstract Chef to Ansible Conversion Symbol -->
+  <!-- Left side (Chef-inspired) -->
+  <circle cx="75" cy="150" r="60" fill="#e34c26" />
+  <path d="M45 150 A30 30 0 0 1 105 150 A30 30 0 0 1 45 150" fill="white" stroke="white" stroke-width="2" />
+  <circle cx="75" cy="150" r="20" fill="#e34c26" />
+  
+  <!-- Right side (Ansible-inspired) -->
+  <circle cx="225" cy="150" r="60" fill="#1A6DB1" />
+  <path d="M195 180 L225 120 L255 180 Z" fill="white" />
+  
+  <!-- Connection/Transformation -->
+  <path d="M135 150 C150 120, 180 120, 195 150 C180 180, 150 180, 135 150 Z" fill="#4CAF50" stroke="#333" stroke-width="2" />
+  
+  <!-- Dynamic flow lines -->
+  <path d="M105 130 Q150 110, 195 130" fill="none" stroke="#333" stroke-width="3" stroke-dasharray="5,3" />
+  <path d="M105 170 Q150 190, 195 170" fill="none" stroke="#333" stroke-width="3" stroke-dasharray="5,3" />
+  
+  <!-- Abstract code symbols -->
+  <path d="M60 130 L70 120 L60 110" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" />
+  <path d="M60 170 L70 180 L60 190" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" />
+  <path d="M240 130 L230 120 L240 110" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" />
+  <path d="M240 170 L230 180 L240 190" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" />
+</svg>

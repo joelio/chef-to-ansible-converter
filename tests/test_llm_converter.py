@@ -212,10 +212,8 @@ server {
                 assert "You are an expert in both Chef and Ansible" in prompt
                 assert "package 'apache2'" in prompt
                 assert "CHEF CODE:" in prompt
-                assert "Format your response like this:" in prompt
-                assert "# Tasks" in prompt
-                assert "# Handlers" in prompt
-                assert "# Variables" in prompt
+                assert "IMPORTANT: Follow these Ansible best practices" in prompt
+                assert "ANSIBLE CODE:" in prompt
     
     def test_extract_ansible_code(self):
         """Test extracting Ansible code from LLM response"""

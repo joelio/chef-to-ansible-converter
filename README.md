@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="Chef to Ansible Converter" width="600">
+  <img src="docs/logo_abstract.svg" alt="Chef to Ansible Converter" width="300">
 </p>
 
 # Chef to Ansible Converter
