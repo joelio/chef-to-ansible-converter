@@ -63,10 +63,11 @@ flowchart LR
     N -->|Pass| O[Final Ansible Roles]
     N -->|Fail| P[Feedback Loop] --> D
     
-    classDef chef fill:#e34c26,stroke:#333,stroke-width:1px,color:white
-    classDef ansible fill:#1A6DB1,stroke:#333,stroke-width:1px,color:white
-    classDef process fill:#4CAF50,stroke:#333,stroke-width:1px,color:white
-    classDef validator fill:#FF9800,stroke:#333,stroke-width:1px,color:white
+    %% High-contrast colors that work in both light and dark modes
+    classDef chef fill:#FF6B6B,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef ansible fill:#4D96FF,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef process fill:#6BCB77,stroke:#000,stroke-width:2px,color:#000,font-weight:bold
+    classDef validator fill:#FFD93D,stroke:#000,stroke-width:2px,color:#000,font-weight:bold
     
     class A,B,B1,B2,B3,B4 chef
     class L1,L2,L3,L4,L5,L6,O ansible
@@ -135,13 +136,14 @@ flowchart TD
 
     G1 --> C1
 
-    classDef input fill:#f9d6d6,stroke:#333,stroke-width:1px
-    classDef parser fill:#d6e5f9,stroke:#333,stroke-width:1px
-    classDef llm fill:#d6f9e0,stroke:#333,stroke-width:1px
-    classDef mapper fill:#f9f2d6,stroke:#333,stroke-width:1px
-    classDef generator fill:#e0d6f9,stroke:#333,stroke-width:1px
-    classDef validator fill:#f9d9e0,stroke:#333,stroke-width:1px
-    classDef output fill:#d6f9f2,stroke:#333,stroke-width:1px
+    %% High-contrast colors that work in both light and dark modes
+    classDef input fill:#FF6B6B,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef parser fill:#4D96FF,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef llm fill:#6BCB77,stroke:#000,stroke-width:2px,color:#000,font-weight:bold
+    classDef mapper fill:#FFD93D,stroke:#000,stroke-width:2px,color:#000,font-weight:bold
+    classDef generator fill:#C780E8,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef validator fill:#FF9F45,stroke:#000,stroke-width:2px,color:#000,font-weight:bold
+    classDef output fill:#54BAB9,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
 
     class A1,A2,A3,A4 input
     class B1,B2,B3 parser
@@ -198,11 +200,12 @@ flowchart TD
     D1 --> C1
     C4 --> D2[Structured Ansible Code]
 
-    classDef prompt fill:#d6e5f9,stroke:#333,stroke-width:1px
-    classDef practices fill:#d6f9e0,stroke:#333,stroke-width:1px
-    classDef process fill:#f9f2d6,stroke:#333,stroke-width:1px
-    classDef api fill:#e0d6f9,stroke:#333,stroke-width:1px
-    classDef output fill:#f9d6d6,stroke:#333,stroke-width:1px
+    %% High-contrast colors that work in both light and dark modes
+    classDef prompt fill:#4D96FF,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef practices fill:#6BCB77,stroke:#000,stroke-width:2px,color:#000,font-weight:bold
+    classDef process fill:#FFD93D,stroke:#000,stroke-width:2px,color:#000,font-weight:bold
+    classDef api fill:#C780E8,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
+    classDef output fill:#FF6B6B,stroke:#000,stroke-width:2px,color:#FFF,font-weight:bold
 
     class A1,A2,A3,A4 prompt
     class B1,B2,B3,B4,B5,B6,B7,B8,B9 practices
