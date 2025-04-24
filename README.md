@@ -67,7 +67,6 @@ flowchart LR
     classDef ansible fill:#1A6DB1,stroke:#333,stroke-width:1px,color:white
     classDef process fill:#4CAF50,stroke:#333,stroke-width:1px,color:white
     classDef validator fill:#FF9800,stroke:#333,stroke-width:1px,color:white
-    classDef subgraph fill:#f5f5f5,stroke:#666,stroke-width:2px
     
     class A,B,B1,B2,B3,B4 chef
     class L1,L2,L3,L4,L5,L6,O ansible
