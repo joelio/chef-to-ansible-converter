@@ -214,31 +214,17 @@ flowchart TD
     class D2 output
 ```
 
-This diagram illustrates how the LLM prompt engineering approach incorporates Ansible best practices to ensure high-quality conversion results:
+**Note:** In addition to the best practices shown above, the actual LLM prompt includes significantly more detailed instructions:
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Test Coverage](https://img.shields.io/badge/coverage-84%25-green.svg)](https://github.com/joelio/chef-to-ansible-converter/actions)
+*   **Detailed Variable Handling:** Strict rules on defining all variables, using `snake_case`, separating `defaults` vs. `vars`, providing defaults for common system/cloud variables, scanning templates for variable usage, and safely handling complex/nested data structures.
+*   **Directory Creation:** Explicit requirement to create parent directories using `ansible.builtin.file` before creating files within them.
+*   **Reserved Variable Names:** Instruction to avoid and rename reserved words (e.g., using `hostname` instead of `name`).
+*   **YAML Formatting:** Specific rules for indentation (2 spaces).
+*   **Template Conditionals:** Guidance on using safe conditional checks (e.g., `is defined and var`).
+*   **Handler Robustness:** Specific advice for making handlers reliable, especially concerning check mode.
+*   **Feedback Integration:** The prompt incorporates feedback from previous failed validation attempts to guide subsequent conversions.
 
-A Python-based tool that leverages Anthropic's Claude API to automatically convert Chef cookbooks to Ansible playbooks and roles, following Ansible best practices.
-
-**[Features](#features)** | **[Installation](#installation)** | **[Usage](#usage)** | **[Architecture](#architecture)** | **[Development](#development)** | **[Testing](#testing)** | **[Custom Resources](#custom-resource-handling)** | **[Metrics](#metrics-collection)** | **[License](#license)**
-
-## Features
-
-- **Repository Processing**: Clone and process Chef repositories
-- **Cookbook Parsing**: Extract and understand Chef cookbook structures and recipes
-- **Intelligent Conversion**: Transform Chef code to Ansible using Anthropic's Claude API
-- **Ansible Generation**: Create properly formatted Ansible playbooks and roles
-- **Validation**: Verify generated Ansible code with ansible-lint
-- **Template Conversion**: Convert ERB templates to Jinja2 templates
-- **Custom Resource Handling**: Map Chef custom resources to Ansible modules
-- **Web UI**: Optional web interface for easy conversion
-- **Comprehensive Logging**: Detailed logging for better debugging
-- **Metrics Collection**: Track conversion quality and improvements
-
-## Security Notice
-
-⚠️ **IMPORTANT**: Do not use this tool with repositories containing sensitive information, credentials, or proprietary code. All code submitted for conversion is processed through external API services and may be stored or logged. Use only with non-sensitive, public, or test repositories.
+These detailed instructions aim to produce high-quality, robust, and best-practice-compliant Ansible code directly from the LLM.
 
 ## Installation
 
