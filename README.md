@@ -4,7 +4,14 @@
 
 # Chef to Ansible Converter
 
-## Workflow Diagrams
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Test Coverage](https://img.shields.io/badge/coverage-84%25-green.svg)](https://github.com/joelio/chef-to-ansible-converter/actions)
+
+A Python-based tool that leverages Anthropic's Claude API to automatically convert Chef cookbooks to Ansible playbooks and roles, following Ansible best practices.
+
+**[Features](#features)** | **[Installation](#installation)** | **[Usage](#usage)** | **[Architecture](#architecture)** | **[Development](#development)** | **[Testing](#testing)** | **[Custom Resources](#custom-resource-handling)** | **[License](#license)**
+
+## Features
 
 ### High-Level Conversion Pipeline
 
@@ -312,9 +319,6 @@ make web
 # Run tests on a sample repository
 make test
 
-# Collect metrics on conversion quality
-make metrics
-
 # Clean up temporary files and directories
 make clean
 ```
@@ -581,84 +585,6 @@ make convert CHEF_REPO_PATH=./test_chef_repo OUTPUT_PATH=./test_output
 # Examine the generated Ansible role
 cat test_output/test/tasks/main.yml
 ```
-
-## Metrics Collection
-
-The converter includes a metrics collection system that tracks conversion quality and generates visualizations:
-
-```bash
-# Run metrics collection
-make metrics
-```
-
-This will:
-1. Convert sample Chef cookbooks to Ansible roles
-2. Analyze the conversion quality
-3. Generate metrics on compliance with Ansible best practices
-4. Create charts and visualizations
-
-### Metrics Dashboard
-
-The metrics are available on the GitHub Pages site:
-https://joelio.github.io/chef-to-ansible-converter/metrics/
-
-### Available Metrics
-
-- **FQCN Compliance**: Use of Fully Qualified Collection Names
-- **Task Name Capitalization**: Proper capitalization in task names
-- **Boolean Values**: Use of true/false instead of yes/no
-- **Variable Definition**: Proper definition of variables
-
-## Conversion Results
-
-We've conducted extensive testing of the Chef to Ansible converter using multiple test harnesses and repositories. Here's what we found:
-
-### Successful Conversions
-
-The converter successfully handles:
-
-1. **Basic Chef Resources**: 
-   - package → ansible.builtin.package
-   - service → ansible.builtin.service
-   - template → ansible.builtin.template
-   - file → ansible.builtin.file
-   - directory → ansible.builtin.file with state: directory
-
-2. **ERB to Jinja2 Conversion**: 
-   - Variable substitution: `<%= node['attr'] %>` → `{{ attr }}`
-   - Conditionals: `<% if ... %>` → `{% if ... %}`
-   - Loops: `<% each do |item| %>` → `{% for item in items %}`
-
-3. **Chef Notifications**: 
-   - notifies → notify
-   - subscribes → handlers
-
-4. **Chef Attributes**: 
-   - Node attributes → Ansible variables
-   - Default attributes → defaults/main.yml
-
-5. **Custom Resources**:
-   - Database resources → community.mysql.mysql_db, etc.
-   - Web server resources → community.general.nginx_site, etc.
-   - System resources → ansible.builtin.systemd, etc.
-
-### Real-World Testing
-
-We tested the converter against these real-world Chef repositories:
-
-1. **chef-solo-hello-world**: Simple web application (3 tasks, 2 handlers, 2 templates)
-2. **iptables**: Network firewall configuration (73 tasks, 7 handlers, 4 templates)
-3. **auditd**: Security auditing (17 tasks, 4 handlers, 7 templates)
-
-### Challenges and Areas for Improvement
-
-1. **Complex Ruby Logic**: 
-   - Ruby blocks and complex conditionals need more sophisticated conversion
-   - Nested logic structures sometimes lose their original intent
-
-2. **Platform-Specific Code**: 
-   - OS-specific configurations need better mapping to Ansible facts
-   - Some platform detection logic doesn't translate cleanly
 
 ## License
 
