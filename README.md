@@ -233,6 +233,27 @@ flowchart TD
 
 These detailed instructions aim to produce high-quality, robust, and best-practice-compliant Ansible code directly from the LLM.
 
+### Prompt Refinement Process
+
+The system prompt has been carefully refined using best practices for LLM prompting:
+
+1. **Structured XML Tags**: The prompt uses XML tags like `<role>`, `<task>`, `<guidelines:best_practices>`, etc. to clearly delineate different sections, making it easier for Claude to understand and follow instructions.
+
+2. **Specific Role Definition**: Rather than a generic "expert," Claude is assigned the specific role of a "Chef-to-Ansible migration specialist" with clear responsibilities.
+
+3. **Chain of Thought Reasoning**: The prompt includes a systematic step-by-step reasoning process that guides Claude through:
+   - Analyzing the Chef recipe components
+   - Mapping Chef resources to Ansible modules
+   - Identifying and organizing variables
+   - Structuring tasks logically
+   - Verifying the conversion is complete and correct
+
+4. **Clear Task Definition**: The conversion task is broken down into specific steps, helping Claude approach the conversion methodically.
+
+5. **Input/Output Formatting**: The prompt clearly separates input and expected output, helping Claude understand exactly what it's working with and what it needs to produce.
+
+This refined prompt structure leads to more accurate conversions, better variable handling, more idiomatic Ansible code, and improved error handling in the generated code.
+
 ## Installation
 
 ### Prerequisites
