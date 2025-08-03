@@ -1,15 +1,15 @@
 # Chef to Ansible Conversion Metrics
 
-Last updated: 2025-07-27 00:31:23
+Last updated: 2025-08-03 00:31:31
 
 ## Latest Compliance Metrics
 
 | Metric | Value |
 |--------|-------|
-| FQCN Compliance (%) | 49.41% |
+| FQCN Compliance (%) | 50.00% |
 | Task Name Capitalization (%) | 100.00% |
 | Boolean Values (true/false) (%) | 0.00% |
-| Variable Definition (%) | 88.46% |
+| Variable Definition (%) | 100.00% |
 
 ## Compliance Metrics Over Time
 
