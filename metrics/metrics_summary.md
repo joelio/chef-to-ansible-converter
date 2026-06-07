@@ -1,6 +1,6 @@
 # Chef to Ansible Conversion Metrics
 
-Last updated: 2026-05-31 00:56:02
+Last updated: 2026-06-07 00:57:55
 
 ## Latest Compliance Metrics
 
